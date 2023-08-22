@@ -17,6 +17,7 @@
 //                      Add the data load function for DA30 analyzer (bin file) and read the related information from "viewer.ini" file.
 //Update by 2023-03-30: Add the data load function for MBS-A1 analyzer and read the related information.
 //							 Add polyAu normalization method and AreaSpectra method in NewMapwindow.
+//Update by 2023-07-28: Add the kxky map rotation and kz map rotation in NewMapwindow. 
 Menu "Extended Procedures"
 	"Mainpanel/1", Mainpanel()
 End
@@ -1965,7 +1966,7 @@ Window NewMapPanel() : Graph
 
 	Button button0,title="Load", pos={10,5},size={80,30},proc=ButtonProc3DMapload,font="Times New Roman",fSize=20
 	Button button1,title="Execute",pos={405,35},size={80,30},proc=ButtonProc3DMapToolExecute,font="Times New Roman",fSize=20
-	PopupMenu popup0 title="Map Tool",pos={400,10},value="Reorder;Bin;Truncate;Norm;XYzero;Rescale;Azimuth;AreaSpectra;Export"
+	PopupMenu popup0 title="Map Tool",pos={400,10},value="Reorder;Bin;Truncate;Norm;XYzero;Rescale;Azimuth;AreaSpectra;kxkymap;kzmap;Export"
 	PopupMenu popup0 font="Times New Roman",fSize=16,proc=PopMenuProc_MapTool
 	Button button2, title="Graph", pos={540,5},size={80,30},proc=ButtonProc3DMapNewGraph,font="Times New Roman",fSize=20
 	Button button3,pos={490.00,35.00},size={50.00,25.00},proc=ButtonProc3DMapHelp,title="Help",font="Times New Roman",fSize=16
@@ -2095,7 +2096,7 @@ Function threeDmapload(threeDmapname)
 	ModifyGraph lsize(zintensity)=2
 	ModifyGraph margin(left)=56,margin(bottom)=56,margin(right)=42,margin(top)=28
 	ModifyGraph mirror(xBaxis)=1,mirror(xLaxis)=1,mirror(yBaxis)=1,mirror(yLaxis)=1
-	ModifyGraph fSize=16,axThick=2,font="Times New Roman"
+	ModifyGraph fSize=16,axThick=2,standoff=0,font="Times New Roman"
 	ModifyGraph tick(zLaxis)=2,tick(zBaxis)=2,tick(xLaxis)=2
 	ModifyGraph tick(xBaxis)=2,tick(yLaxis)=2,tick(yBaxis)=2
 	ColorScale/C/N=text0/X=105.00/Y=-5.00/F=0 nticks=0
@@ -2196,6 +2197,10 @@ Function ButtonProc3DMapToolExecute(ctrlName) : ButtonControl
 		ButtonProc3DMapAzimuth()	
 	elseif(Stringmatch(MapTool,"AreaSpectra")==1)
 		ButtonProc3DMapAreaspectra()	
+	elseif(Stringmatch(MapTool,"kxkymap")==1)
+		ButtonProc3DMapkxkymap()
+	elseif(Stringmatch(MapTool,"kzmap")==1)
+		ButtonProc3DMapkzmap()		
 	endif
 End
 
@@ -2848,6 +2853,111 @@ Function ButtonProc3DMapexport()
 		Abort "Please first load a 3D map!"
 	endif
 	duplicate/O threeDmap, $exportwavename
+End
+
+Function ButtonProc3DMapkxkymap()	
+	wave threeDmap
+	String/g cubicmapname
+	variable Ef, aziangle
+	prompt Ef "Please first set the energy axis to Z, enter the fermi energy(eV):"
+	prompt aziangle "enter the azimuth angle:"
+	doprompt "", Ef, aziangle
+	if(V_flag)
+		return -1 //user cancel
+	endif
+	
+	variable thetaX1, thetaX2, thetaY1, thetaY2, kx1, kx2, ky1, ky2, azi
+	thetaX1=dimoffset(threeDmap,0); thetaY1=dimoffset(threeDmap,1)
+	thetaX2=thetaX1+dimdelta(threeDmap,0)*(dimsize(threeDmap,0)-1)
+	thetaY2=thetaY1+dimdelta(threeDmap,1)*(dimsize(threeDmap,1)-1)
+	
+	kx1=0.51197*sqrt(Ef)*sin(thetaX1/180*pi)
+	kx2=0.51197*sqrt(Ef)*sin(thetaX2/180*pi)
+	ky1=0.51197*sqrt(Ef)*sin(thetaY1/180*pi)
+	ky2=0.51197*sqrt(Ef)*sin(thetaY2/180*pi)
+	
+	duplicate/O threeDmap, temp
+	setscale/I x kx1, kx2, temp
+	setscale/I y ky1, ky2, temp
+	duplicate/O temp, $cubicmapname+"_rot"
+	wave newmapwave=	 $cubicmapname+"_rot"
+	//map rotation
+	azi=aziangle/180*pi
+	newmapwave[][][]=temp(Indextoscale(newmapwave,p,0)*cos(-azi)-Indextoscale(newmapwave,q,1)*sin(-azi))(Indextoscale(newmapwave,p,0)*sin(-azi)+Indextoscale(newmapwave,q,1)*cos(-azi))[r]	
+	threeDmapload(cubicmapname+"_rot")
+	cubicmapname=cubicmapname+"_rot"
+
+	killwaves temp
+End
+
+Function ButtonProc3DMapkzmap()
+	variable  h_bar=1.0545*10^-34,aa,cc,m=9.11*10^-31,eV=1.6*10^-19
+	variable wfunc, V_0, internum, theta1, theta2, ang1, ang2, kzmin, kzmax, kpmin, kpmax, i, j, kp, kz
+	wave threeDmap
+	string/g cubicmapname
+	string mapname
+	
+	internum=5
+	prompt wfunc "Please set the energy along z, hv along y and angle along x. Rescale all axies. Enter the work function (eV):"
+	prompt V_0 "Enter the inner potential (eV):"
+	prompt internum "Enter the interpolate number:"
+	prompt mapname "Enter the new map name:"
+	doprompt "", wfunc,V_0, internum, mapname
+	if(V_flag)
+		return -1
+	endif
+	
+	duplicate/O threeDmap, temp
+	if(dimdelta(threeDmap,1)<0)
+		temp[][][]=threeDmap[p][dimsize(threeDmap,1)-q][r]		
+		setscale/P y, dimoffset(threeDmap,1)+dimdelta(threeDmap,1)*(dimsize(threeDmap,1)-1),-dimdelta(threeDmap,1),temp
+	endif
+	
+	//interpolate the hv-theta map, only along the hv direction
+	make/O/N=(dimsize(temp,0),dimsize(temp,1)) temp1
+	make/O/N=(dimsize(temp,0),dimsize(temp,1)*internum,dimsize(temp,2)) temp2
+	setscale/P x, dimoffset(temp,0),dimdelta(temp,0), temp2
+	setscale/p y, dimoffset(temp,1),dimdelta(temp,1)/internum, temp2
+	setscale/P z, dimoffset(temp,2),dimdelta(temp,2), temp2
+	
+	for(i=0; i<dimsize(temp,2); i+=1)
+		temp1[][]=temp[p][q][i]
+		Imageinterpolate/F={1, internum}/DEST=inter bilinear, temp1
+		temp2[][][i]=inter[p][q]
+	endfor
+	duplicate/O temp2, temp
+
+	variable Emin=dimoffset(temp,2)+dimoffset(temp,1)-wfunc
+	variable Emax=dimoffset(temp,1)-wfunc+dimdelta(temp,1)*(dimsize(temp,1)-1)
+	theta1=dimoffset(threeDmap,0)
+	theta2=dimoffset(threeDmap,0)+dimdelta(threeDmap,0)*(dimsize(threeDmap,0)-1)
+	ang1=max(abs(theta1),abs(theta2))
+	ang2=min(abs(theta1),abs(theta2))
+	//calculate the momentum range
+	kzmin=(1/h_bar)*sqrt(2*m*(Emin*eV*cos(ang1/180*pi)^2+V_0*eV))*10^-10
+	kzmax=(1/h_bar)*sqrt(2*m*(Emax*eV+V_0*eV) )*10^-10
+	kpmin=sqrt(2*m*Emax*eV)/h_bar*sin(theta1/180*pi)*10^-10
+	kpmax=sqrt(2*m*Emax*eV)/h_bar*sin(theta2/180*pi)*10^-10
+		
+	setscale/I x, kpmin, kpmax, temp
+	setscale/I y, kzmin, kzmax, temp
+	setscale/I z, dimoffset(threeDmap,2), dimoffset(threeDmap,2)+dimdelta(threeDmap,2)*(dimsize(threeDmap,2)-1), temp
+	temp[][][]=0
+	//hv-theta map convert to kz-k// map
+	//multithread temp[][][]=threeDmap[ScaletoIndex(threeDmap,sign(Indextoscale(temp,p,0))*atan(sqrt(Indextoscale(temp,p,0)^2/(Indextoscale(temp,q,1)^2-V_0*eV*2*m/(h_bar^2)*10^-20)))*180/pi,0)][ScaletoIndex(threeDmap,(Indextoscale(temp,p,0)^2+Indextoscale(temp,q,1)^2)*10^20*h_bar^2/(2*m*eV)+wfunc-V_0-Indextoscale(temp,r,2),1)][r]
+	
+	for(i=0; i<dimsize(temp,0); i+=1)
+		for(j=0; j<dimsize(temp,1); j+=1)
+			//kp=(1/h_bar)*sqrt(2*m*((Indextoscale(threeDmap,j,1)-wfunc+Indextoscale(threeDmap,r,2))*eV))*sin(Indextoscale(threeDmap,i,0)/180*pi)*10^-10
+			//kz=(1/h_bar)*sqrt(2*m*((Indextoscale(threeDmap,j,1)-wfunc+Indextoscale(threeDmap,r,2))*eV*cos(Indextoscale(threeDmap,i,0)/180*pi)^2+V_0*eV))*10^-10
+			multithread temp[ScaletoIndex(temp,(1/h_bar)*sqrt(2*m*((Indextoscale(temp2,j,1)-wfunc+Indextoscale(temp2,r,2))*eV))*sin(Indextoscale(temp2,i,0)/180*pi)*10^-10,0)][ScaletoIndex(temp,(1/h_bar)*sqrt(2*m*((Indextoscale(temp2,j,1)-wfunc+Indextoscale(temp2,r,2))*eV*cos(Indextoscale(temp2,i,0)/180*pi)^2+V_0*eV))*10^-10,1)][]=temp2[i][j][r]
+		endfor
+	endfor
+	
+	duplicate/O temp, $mapname
+	killwaves temp, temp1, temp2, inter
+	threeDmapload(mapname)
+	cubicmapname=mapname
 End
 
 Function ButtonProc3DMapNewGraph(ctrlName) : ButtonControl
@@ -3602,7 +3712,7 @@ End
 
 Window ImageAxisCorrPanel() : Panel
 	PauseUpdate; Silent 1		// building window...
-	NewPanel/W=(1350,550,1650,700)
+	NewPanel/W=(1350,550,1650,730)
 	ModifyPanel cbRGB=(0,48830,0)
 	variable/g ImAxis_onesliceangle=0
 	variable/g ImAxis_piangle=0
@@ -3625,6 +3735,8 @@ Window ImageAxisCorrPanel() : Panel
 	CheckBox check0 value=1,title="invert",pos={210,65},size={60,22},proc=ImageAxis_colorCheckProc,font="Times New Roman",fSize=20,side=1
 	CheckBox check1,pos={98.00,122.00},size={39.00,19.00},proc=CheckProc_Axiscorrapicheck,title="a=π"
 	CheckBox check1,font="Times New Roman",fSize=16,value= 0,side= 1
+	Button button4,pos={9.00,145.00},size={80.00,30.00},proc=ButtonProc_CutslistAxisCorr,title="Cutslistcorr"
+	Button button4,font="Times New Roman",fSize=14
 
 EndMacro
 
@@ -3835,6 +3947,151 @@ Function ButtonProc_corrwaveoutput (ctrlName) : ButtonControl
    endif
 	//ModifyImage $outputwave ctab={*,*,Grays,1}
 
+End
+
+
+Function ButtonProc_CutslistAxisCorr(ctrlName) : ButtonControl
+	String ctrlName
+	make/O/T/N=0 cutcorrlistwave
+	make/O/N=0 pianglelistwave
+	NewPanel /W=(538,182,800,650)/N=cutlistwaveedit
+	Button button0,pos={145.00,425.00},size={60.00,30.00},title="End"
+	Button button0,font="Times New Roman",fSize=16,fStyle=1,proc=ButtonProc_cutlistwavebutton1
+	Button button1,pos={15.00,425.00},size={60.00,30.00},proc=ButtonProc_culistadd1,title="Add"
+	Button button1,font="Times New Roman",fSize=16
+	Button button2,pos={80.00,425.00},size={60.00,30.00},proc=ButtonProc_culistremove1,title="Remove"
+	Button button2,font="Times New Roman",fSize=16
+	Button button3,pos={220.00,430.00},size={30.00,20.00},title="All"
+	Button button3,font="Times New Roman",proc=ButtonProc_cutlistall1
+	PopupMenu popup0,pos={15.00,395.00},size={42.00,21.00},font="Times New Roman"
+	PopupMenu popup0,fSize=16,mode=1,value=wavelist("!*colors*", ";", "DIMS:2")
+	SetVariable setvar0,pos={164.00,398.00},size={90.00,19.00},title="filstr"
+	SetVariable setvar0,font="Times New Roman",fSize=14,limits={-inf,inf,0},value= _STR:"", proc=SetVarProc_cutlistpianglefilter
+	Edit/W=(14,25,273,374)/HOST=#  cutcorrlistwave, pianglelistwave 
+	ModifyTable format(Point)=1
+	ModifyTable statsArea=85
+	RenameWindow #,T0
+	SetActiveSubwindow ##
+	pauseforuser cutlistwaveedit
+End
+
+Function ButtonProc_culistadd1(ctrlName) : ButtonControl
+	String ctrlName
+	controlinfo/W=cutlistwaveedit popup0
+	string currentstr=S_value
+	variable size=dimsize(cutcorrlistwave,0)
+	make/O/T/N=(size+1) cutcorrlistwave
+	make/O/N=(size+1) pianglelistwave
+	cutcorrlistwave[size+1]=currentstr
+End
+
+Function ButtonProc_culistremove1(ctrlName) : ButtonControl
+	String ctrlName
+	variable startnum, denum
+	prompt startnum, "Enter the num of points start to delete:"
+	prompt denum, "Enter the num of points to delete:"
+	doprompt "", startnum, denum
+	if(V_flag)
+		return -1
+	endif
+	Deletepoints startnum, denum, cutcorrlistwave
+	Deletepoints startnum, denum, pianglelistwave
+End
+
+Function ButtonProc_cutlistall1(ctrlName) : ButtonControl
+	String ctrlName
+	string liststr=pianglecutlistfilter()
+	variable num=itemsinlist(liststr)
+	make/O/T/N=(num) cutcorrlistwave
+	make/O/N=(num) pianglelistwave
+	variable i
+	for(i=0; i<num; i+=1)
+		cutcorrlistwave[i]=stringfromlist(i,liststr)
+	endfor
+End
+
+Function SetVarProc_cutlistpianglefilter(ctrlName,varNum,varStr,varName) : SetVariableControl
+	String ctrlName
+	Variable varNum
+	String varStr
+	String varName
+	string/g pianglefilstr=varStr
+	popupmenu popup0 value=pianglecutlistfilter()
+End
+
+Function/S pianglecutlistfilter()
+	string/g pianglefilstr
+	string list=wavelist("*"+pianglefilstr+"*", ";", "DIMS:2")
+	return list
+End
+
+Function ButtonProc_cutlistwavebutton1(ctrlName) : ButtonControl
+	String ctrlName
+	wave/T cutcorrlistwave
+	variable size=dimsize(cutcorrlistwave,0)
+	variable i
+	killwindow cutlistwaveedit
+	cutlistgocorr()
+End
+
+Function cutlistgocorr()
+	wave/T cutcorrlistwave
+	wave pianglelistwave
+	variable i, j, size, currentpiangle, thetaoffset
+	variable Theta_min, Theta_max, kpoints, rrr, onesliceangle, k_min, k_max
+	size=dimsize(pianglelistwave,0)
+	prompt thetaoffset "Please enter the thetaoffset for cutlist corr:"
+	doprompt "", thetaoffset
+	if(V_flag)
+		return -1
+	endif
+	
+	for(i=0; i<size; i+=1)
+		wave currentwave=$cutcorrlistwave[i]
+		currentpiangle=pianglelistwave[i]
+		onesliceangle=dimdelta(currentwave,1)
+		
+		duplicate/O currentwave, temp, temp1
+		kpoints=dimsize(temp,1)
+		rrr=1/sin(currentpiangle/180*pi)
+		Theta_min=(dimoffset(currentwave,1)-thetaoffset)/180*pi
+		Theta_max=Theta_min+((kpoints-1)*onesliceangle)/180*pi
+		k_min=rrr*sin(Theta_min)
+		k_max=rrr*sin(Theta_max)
+		setscale/I y, Theta_min, Theta_max, "" temp
+		setscale/I y, k_min, k_max, "" temp1
+		temp1[][]=temp[p][ScaletoIndex(temp,asin(Indextoscale(temp1, q, 1)/rrr),1)]
+		duplicate/o temp1 $cutcorrlistwave[i]+"_corr"
+		cutlistgocorrplot(cutcorrlistwave[i]+"_corr")
+	endfor
+	
+	killwaves temp, temp1
+End
+
+Function cutlistgocorrplot(str)
+	string str
+	wave  NewImageAxiscolortab
+	variable/g ImageAxis_colorcheck, Axiscorrapicheck
+	Display;DelayUpdate
+	AppendImage $str
+  	ModifyGraph swapXY=1
+  	ModifyGraph zero=4,zeroThick=2,mirror=1, tick=2
+  	ModifyGraph axThick=2
+	ModifyGraph margin(left)=70,margin(bottom)=70,margin(right)=28,margin(top)=28,width=255.118,height=340.157
+	ModifyGraph fStyle=1,tickUnit=1,font="Times New Roman"
+	ModifyGraph fSize(bottom)=16,fSize(left)=16
+	Label/Z left "\\F'Times New Roman'\\Z24\f02E-E\BF\M\F'Times New Roman'\\Z24\f00 (eV)"
+	if(Axiscorrapicheck==1)
+		Label bottom "\\F'Times New Roman'\\Z24\\f00 k\\Bx\\M\\F'Times New Roman'\\Z24 (Å\\S-1\\M\\F'Times New Roman'\\Z24)"
+	else
+		Label/Z bottom "\\F'Times New Roman'\\Z24\f00k (π/a)"
+	endif
+	if(ImageAxis_colorcheck == 1)
+      ModifyImage/Z $str ctab={*,*,NewImageAxiscolortab,1}
+   else
+      ModifyImage/Z $str ctab={*,*,NewImageAxiscolortab,0}
+   endif
+	
 End
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -5353,8 +5610,12 @@ Function ButtonProc_analysiscutlist(ctrlName) : ButtonControl
 	Button button1,font="Times New Roman",fSize=16
 	Button button2,pos={80.00,425.00},size={60.00,30.00},proc=ButtonProc_culistremove,title="Remove"
 	Button button2,font="Times New Roman",fSize=16
+	Button button3,pos={205.00,430.00},size={30.00,20.00},proc=ButtonProc_cutlistall,title="All"
+	Button button3,font="Times New Roman"
 	PopupMenu popup0,pos={15.00,395.00},size={42.00,21.00},font="Times New Roman"
 	PopupMenu popup0,fSize=16,mode=1,value=wavelist("!*colors*", ";", "DIMS:2")
+	SetVariable setvar0,pos={147.00,398.00},title="filterstr",size={90.00,20.00},proc=SetVarProc_cutlistfilterstr
+	SetVariable setvar0,font="Times New Roman",fSize=14,limits={-inf,inf,0},value=_STR:""
 	Edit/W=(14,25,273,374)/HOST=#  cutlistwave
 	ModifyTable format(Point)=1
 	ModifyTable statsArea=85
@@ -5397,6 +5658,34 @@ Function ButtonProc_cutlistwavebutton(ctrlName) : ButtonControl
 		cutliststr+=cutlistwave[i]+";"
 	endfor
 End
+
+Function SetVarProc_cutlistfilterstr(ctrlName,varNum,varStr,varName) : SetVariableControl
+	String ctrlName
+	Variable varNum
+	String varStr
+	String varName
+	string/g filstr=varStr
+	PopupMenu popup0,value=cutlistfilter()
+End
+
+Function/S cutlistfilter()
+	string/g filstr
+	string fillist = wavelist("*"+filstr+"*", ";", "DIMS:2")
+	return fillist
+End
+
+
+Function ButtonProc_cutlistall(ctrlName) : ButtonControl
+	String ctrlName
+	string liststr=cutlistfilter()
+	variable num=itemsinlist(liststr)
+	make/O/T/N=(num) cutlistwave
+	variable i
+	for(i=0; i<num; i+=1)
+		cutlistwave[i]=stringfromlist(i,liststr)
+	endfor
+End
+
 
 
 Function CheckProc_analysislistcheck(ctrlName,checked) : CheckBoxControl
