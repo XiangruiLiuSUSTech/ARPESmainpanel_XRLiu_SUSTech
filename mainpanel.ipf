@@ -705,12 +705,12 @@ Function ButtonProc_Fermicorr(ctrlName) : ButtonControl
 	string/g datatype
 	variable fermilevel, deltahv, i, j, xoff,xdelta
 	variable index=dimsize(datalistwave,0)
-	prompt wavecheck "Use fermi level wave to correct?", popup, "No;Yes"
+	prompt wavecheck "Choose the fermi level correct mode:", popup, "EF subtract;fermi level wave;polyAu fit"
 	doprompt "", wavecheck
 	if(V_flag)
     	return -1// User canceled
    endif
-   if(stringmatch(wavecheck,"No")==1)
+   if(stringmatch(wavecheck,"EF subtract")==1)
 	prompt fermilevel "Please enter the fermi level(eV):"
 	prompt deltahv "Please enter the increment of photon energy (eV):(please set to zero except for kz map)"
 	doprompt "", fermilevel, deltahv	
@@ -735,7 +735,7 @@ Function ButtonProc_Fermicorr(ctrlName) : ButtonControl
 			Notebook exp_logbook selection={endoffile, endoffile},fsize=12, text=logtext
 		endif
 	endfor
-	else
+	elseif(stringmatch(wavecheck,"fermi level wave")==1)
 		make/O/T/N=(numpnts(dataselwave),2) fermiwave
 		fermiwave[][0]=datalistwave[p]
 		NewPanel /W=(538,182,821,618)/N=fermiwaveedit
@@ -769,6 +769,42 @@ Function ButtonProc_Fermicorr(ctrlName) : ButtonControl
 			endif
 		endif
 	endfor
+	
+	elseif(stringmatch(wavecheck,"polyAu fit")==1)
+	string AuEFwavestr
+	prompt AuEFwavestr "Choose the fitted EF for poly Au:" popup wavelist("fit_*",";","MINROWS:201")
+	doprompt "", AuEFwavestr
+	if(V_flag)
+		return -1
+	endif
+	wave EFwave=$AuEFwavestr
+	dowindow/f exp_logbook
+	if(V_flag==0)
+		NewNotebook/W=(200,150,800,500)/F=0/ENCG=1/N=exp_logbook
+	endif
+	
+	for(i=0; i<index; i+=1)
+		if(dataselwave[i]!=0)
+			currentwavename=removeending(datalistwave[i],datatype)
+			wave currentwave=$currentwavename
+			if(dimsize(currentwave,1)==dimsize(EFwave,0))
+				xdelta=dimdelta(currentwave,0)
+				setscale/P x, energyoffwave[i]-EFwave[0], xdelta, currentwave
+				make/N=(dimsize(currentwave,0))/O temp
+				for(j=0; j<dimsize(EFwave,0); j+=1)
+					temp[]=currentwave[p][j]
+					setscale/P x, energyoffwave[i]-EFwave[j], xdelta, temp
+					currentwave[][j]=temp(x)
+				endfor
+				logtext="The fermi level for "+currentwavename+" corrected by poly Au fermi level from "+AuEFwavestr+"\r" 
+				Notebook exp_logbook selection={endoffile, endoffile},fsize=12, text=logtext
+			else
+				logtext="The dimension size of "+currentwavename+" and poly Au fermi wave "+AuEFwavestr+" mismatch!\r" 
+				Notebook exp_logbook selection={endoffile, endoffile},fsize=12, text=logtext
+			endif
+		endif
+	endfor
+	killwaves temp
 	endif
 	logtext="----------The fermi level correct end--------------\r\r"
 	Notebook exp_logbook selection={endoffile, endoffile},fsize=12, text=logtext 
@@ -931,7 +967,7 @@ Function ButtonProc_curvefit (ctrlName) : ButtonControl
 	variable pcsrA, pcsrB, w_0, w_1, w_2, w_3, w_4, w_5, w_6, w_7, w_8, w_9, w_10, w_11, w_12
 	variable xwavedim, xwaveoff, xwavedelta
 	wave W_sigma
-	prompt Fitfunction "Please choose the fit function:" popup, "FermiDirac;Lor_onepeak;Lor_twopeak;Lor_fourpeak;gauss_twopeak"
+	prompt Fitfunction "Please choose the fit function:" popup, "FermiDirac;Lor_onepeak;Lor_twopeak;Lor_fourpeak;Voigt_onepeak;Voigt_twopeak;gauss_twopeak"
 	doprompt "", Fitfunction
 	if(V_flag)
 		return -1 // user cancel
@@ -1112,6 +1148,82 @@ Function ButtonProc_curvefit (ctrlName) : ButtonControl
 	 	fitcurveplot()
   	endif
   	
+  	   	
+   	if(stringmatch(Fitfunction,"Voigt_onepeak")==1)
+   		duplicate/O $fitwaveX VoigtX
+   		duplicate/O $fitwave VoigtY
+   		make/O/N=5 Voigtfitcoeff
+   		make/O fit_VoigtY
+   		wave Voigtfitcoeff, fit_VoigtY
+ 		prompt w_0, "The fit function reads f=A+h/((x-p)^2+d^2)⊗gauss(x-p). The background A:" 
+  		Prompt w_1, "Peak height h:"
+  		Prompt w_2, "Peak position p:" 
+  		Prompt w_3, "Peak width d:"
+  		doprompt "", w_0, w_1, w_2, w_3
+  		if(V_flag)
+    		return -1  //user cancel
+  		endif
+  		Voigtfitcoeff={w_0, w_1, 5/w_3, w_2, 5}
+  		pcsrA=pcsr(A,"") ; pcsrB=pcsr(B,"")
+  		FuncFit/q onepeakVoigtfunction Voigtfitcoeff VoigtY[pcsrA,pcsrB]/X=VoigtX/D
+  		duplicate/O W_sigma, onepeakVoigtdelta
+ 	 	printf "The peak1 position is %g±%g; the peak1 Lor width is %g; gauss width is %g; Voigt width is %g; peak1 area is %g\r", Voigtfitcoeff[3], onepeakVoigtdelta[3], Voigtfitcoeff[4]/Voigtfitcoeff[2],  sqrt(ln(2))/Voigtfitcoeff[2], Voigtfitcoeff[4]/Voigtfitcoeff[2]/2+sqrt((Voigtfitcoeff[4]/Voigtfitcoeff[2]/2)^2+(sqrt(ln(2))/Voigtfitcoeff[2])^2), Voigtfitcoeff[1]/Voigtfitcoeff[2]*sqrt(pi)
+ 	 	
+ 	 	dowindow/f Voigtfit
+ 	 	if(V_flag!=0)
+    		removefromgraph/Z/w=Voigtfit $"#0", $"#1"
+    		AppendToGraph/W=Voigtfit VoigtY vs VoigtX 
+	 		AppendToGraph/w=Voigtfit fit_VoigtY 
+	 		Modifygraph rgb(fit_VoigtY)=(0,0,0)
+    	else
+	 	 	Display /W=(309,48,723,580)/N=Voigtfit 
+	 	 	AppendToGraph/w=Voigtfit VoigtY vs VoigtX 
+	 	 	AppendToGraph/w=Voigtfit fit_VoigtY 
+	 	 	Modifygraph rgb(fit_VoigtY)=(0,0,0)
+	 	 endif
+		 fitcurveplot()
+   	endif
+  	
+  	if(stringmatch(Fitfunction,"Voigt_twopeak")==1)
+   		duplicate/O $fitwaveX VoigttwopeakX
+  		duplicate/O $fitwave VoigttwopeakY
+  		make/O/N=9 Voigttwopeakfitcoeff
+  		make/O fit_VoigttwopeakY
+  		wave Voigttwopeakfitcoeff
+   		 prompt w_0, "The fit function reads f=A+h1/((x-p1)^2+d1^2)⊗gauss(x-p1)+h2/((x-p2)^2+d2^2)⊗gauss(x-p2). The background A:" 
+  		 Prompt w_1, "Peak1 height h1:"
+		 Prompt w_2, "Peak1 position p1:" 
+	    Prompt w_3, "Peak1 width d1:"
+	    Prompt w_4, "Peak2 height h2:"
+  	 	 Prompt w_5, "Peak2 position p2:" 
+  		 Prompt w_6, "Peak2 width d2:"
+  		doprompt "", w_0, w_1, w_2, w_3, w_4, w_5, w_6
+  		if(V_flag)
+   			return -1  //user cancel
+  		endif
+ 		Voigttwopeakfitcoeff={w_0, w_1, 5/w_3, w_2, 5, w_4, 5/w_6, w_5, 5}
+ 		pcsrA=pcsr(A,"") ; pcsrB=pcsr(B,"")
+  		FuncFit/q twopeakVoigtfunction Voigttwopeakfitcoeff VoigttwopeakY[pcsrA,pcsrB] /X=VoigttwopeakX /D
+  		duplicate/O W_sigma, twopeakVoigtdelta
+  		
+  		printf "The peak1 position is %g±%g; the peak1 Lor width is %g; gauss width is %g; Voigt width is %g; peak1 area is %g\r", Voigttwopeakfitcoeff[3], twopeakVoigtdelta[3], Voigttwopeakfitcoeff[4]/Voigttwopeakfitcoeff[2],  sqrt(ln(2))/Voigttwopeakfitcoeff[2], Voigttwopeakfitcoeff[4]/Voigttwopeakfitcoeff[2]/2+sqrt((Voigttwopeakfitcoeff[4]/Voigttwopeakfitcoeff[2]/2)^2+(sqrt(ln(2))/Voigttwopeakfitcoeff[2])^2), Voigttwopeakfitcoeff[1]/Voigttwopeakfitcoeff[2]*sqrt(pi)
+  		printf "The peak2 position is %g±%g; the peak1 Lor width is %g; gauss width is %g; Voigt width is %g; peak2 area is %g\r", Voigttwopeakfitcoeff[7], twopeakVoigtdelta[7], Voigttwopeakfitcoeff[8]/Voigttwopeakfitcoeff[6],  sqrt(ln(2))/Voigttwopeakfitcoeff[6], Voigttwopeakfitcoeff[8]/Voigttwopeakfitcoeff[6]/2+sqrt((Voigttwopeakfitcoeff[8]/Voigttwopeakfitcoeff[6]/2)^2+(sqrt(ln(2))/Voigttwopeakfitcoeff[6])^2), Voigttwopeakfitcoeff[5]/Voigttwopeakfitcoeff[6]*sqrt(pi)
+  		
+  		dowindow/f Voigttwopeakfit
+  		if(V_flag!=0)
+  			removefromgraph/Z/w=Voigttwopeakfit $"#0", $"#1"
+    		AppendToGraph/W=Voigttwopeakfit VoigttwopeakY vs VoigttwopeakX 
+	 		AppendToGraph/w=Voigttwopeakfit fit_VoigttwopeakY 
+	 		Modifygraph rgb(fit_VoigttwopeakY)=(0,0,0)
+	 	else
+	 		Display /W=(309,48,723,580)/N=Voigttwopeakfit 
+	 		AppendToGraph/w=Voigttwopeakfit VoigttwopeakY vs VoigttwopeakX
+	 		AppendToGraph/w=Voigttwopeakfit fit_VoigttwopeakY 
+	 		Modifygraph rgb(fit_VoigttwopeakY)=(0,0,0)
+	 	endif
+	 	fitcurveplot()
+	endif
+  	
   	if(stringmatch(Fitfunction,"gauss_twopeak")==1)
    		 duplicate/O $fitwaveX gausstwopeakX
   		 duplicate/O $fitwave gausstwopeakY
@@ -1200,6 +1312,7 @@ Window NewImagePanel() : Graph
    SetVariable setvar8 title=" ",pos={5,35},size={100,20},value=NewImagename,font="Times New Roman",fsize=16
    Button button0 title="Load", pos={10,5},size={80,30},proc=ButtonProcPlotwave,font="Times New Roman",fSize=20
    Button button1 title="Scope", pos={400,10},size={80,30},proc=ButtonProcScope,font="Times New Roman",fSize=20
+  	Button button2,title="AuEF",pos={532.00,45.00},size={50.00,20.00},proc=ButtonProcAuEffit,font="Times New Roman",fsize=14
    ModifyGraph swapXY=1
    AppendtoGraph/B=EDCaxisB/L=EDCaxisL EDCIntensity
    AppendtoGraph/B=MDCaxisB/L=MDCaxisL/VERT MDCIntensity
@@ -1622,6 +1735,45 @@ Function SetyrangeProc(ctrlName,varNum,varStr,varName) : SetVariableControl
    variable/g yrange
    yrange=varNum
    twodimwavecurvetrack()
+End
+
+Function ButtonProcAuEffit(ctrlName) : ButtonControl
+	String ctrlName
+	wave curveplotwave
+	variable Efi, Eff, i
+	string auEFwave="polyAu001"
+	prompt Efi "Enter the Fermi-Dirac fit Ei:"
+	prompt Eff "Enter the Fermi Dirac fit Ef (> Ei):"
+	prompt auEFwave "Enter the poly Au EF wave name:"
+	doprompt "", Efi, Eff, auEFwave
+	if(V_flag)
+		return -1 //user cancel
+	endif
+	
+	variable size1=dimsize(curveplotwave,0)
+	variable size2=dimsize(curveplotwave,1)
+	make/O/n=(size1) temp
+	setscale/P x, dimoffset(curveplotwave,0), dimdelta(curveplotwave,0), temp
+	make/O/n=(size2) $auEFwave
+	wave auEF=$auEFwave
+	make/O/n=5 FDfitcoeff
+	
+	for(i=0; i<size2; i+=1)
+		temp[]=curveplotwave[p][i]
+		FDfitcoeff={temp(Eff), temp(Efi)-temp(Eff),(Efi+Eff)/2, 0.02, 1}
+		FuncFit/q FermiDiracfitfunction, FDfitcoeff, temp[x2pnt(temp,Efi), x2pnt(temp,Eff)]/D
+		auEF[i]=FDfitcoeff[2]
+	endfor
+	
+	Display $auEFwave
+	ModifyGraph tick=2,mirror=1,fSize=20,axThick=2,standoff=0,font="Times New Roman"
+	Label left "\\F'Times New Roman'\\Z24\\f02E\\BF\\M\\f00 (eV)"
+	Label bottom "\\F'Times New Roman'\\Z24slices"
+	ModifyGraph mode=4,marker=19,msize=2,mrkThick=1,rgb=(2,39321,1)
+	
+	CurveFit/Q/L=(size2) /X=1 poly 10, $auEFwave /D 
+	ModifyGraph lsize($"fit_"+auEFwave)=3
+	killwaves temp, fit_temp
 End
 
 Function ButtonProcScope(ctrlName) : ButtonControl
@@ -5517,7 +5669,7 @@ Window AnalysisPanel() : Panel
 	SetVariable setvar7,limits={0,inf,1},value= _NUM:0
 	PopupMenu popup2,pos={77.00,221.00},size={97.00,21.00},proc=PopMenuProc_analysisfuncset,title="Func"
 	PopupMenu popup2,font="Times New Roman",fSize=14
-	PopupMenu popup2,mode=1,popvalue="LorOne",value= #"\"LorOne;LorTwo;LorFour;GaussTwo;FermiDirac\""
+	PopupMenu popup2,mode=1,popvalue="LorOne",value= #"\"LorOne;LorTwo;LorFour;VoigtOne;VoigtTwo;GaussTwo;FermiDirac\""
 	Button button2,pos={8.00,217.00},size={64.00,29.00},proc=ButtonProc_analysisfuncfit,title="Funcfit"
 	Button button2,font="Times New Roman",fSize=16
 	Button button3,pos={6.00,275.00},size={73.00,30.00},proc=ButtonProc_analysisdispersion,title="Dispersion"
@@ -6180,6 +6332,133 @@ Function ButtonProc_analysisfuncfit(ctrlName) : ButtonControl
  		printf "The peak4 position p4 is %g±%g ; the peak4 width d4 is %g±%g \r", Lorfourpeakfitcoeff[11], Lorfourpeakdelta[11], Lorfourpeakfitcoeff[12], Lorfourpeakdelta[12]
 	endif
 	
+	if(stringmatch(analysisfunc,"VoigtOne")==1)
+		make/O/N=5 Voigtfitcoeff
+		duplicate/O ywave, temp
+		setscale/P x, xwave[0], xwave[1]-xwave[0], temp
+		peaklevel=(wavemax(temp,xwave(pcsrA),xwave(pcsrB))*2+wavemin(temp,xwave(pcsrA),xwave(pcsrB))*3)/5
+		findpeak/Q/B=3/M=(peaklevel)/R=(xwave[pcsrA],xwave[pcsrB]) temp
+		w_0=wavemin(temp,xwave(pcsrA),xwave(pcsrB))
+		if(V_flag==0)
+			w_1=V_PeakVal
+			w_2=V_PeakLoc
+			w_3=V_PeakWidth
+		else
+			w_1=0
+			w_2=0
+			w_3=0
+		endif
+		prompt w_0, "The fit function reads f=A+h1/((x-p1)^2+d1^2)⊗gauss(x-p1). The background A:" 
+  		Prompt w_1, "Peak1 height h1:"
+  		Prompt w_2, "Peak1 position p1(1/Å):" 
+  		Prompt w_3, "Peak1 width d1(1/Å):"
+  		doprompt "", w_0, w_1, w_2, w_3
+  		if(V_flag)
+   			return -1  //user cancel
+  		endif
+  		Voigtfitcoeff={w_0, w_1, 5/w_3, w_2, 5} //the parameter w_4 defines the ratio between Loretizian and gaussian function, use 5 for initial value
+  		
+  		if(stringmatch(analysisfitbg,"None")==1)
+  			FuncFit/q onepeakVoigtfunction Voigtfitcoeff ywave[pcsrA,pcsrB] /X=xwave /D/C=fitcwave1
+  		elseif(stringmatch(analysisfitbg,"Linear")==1)
+  			make/O/N=1 linearbgcoeff
+ 	 		linearbgcoeff={1}
+ 	 		FuncFit/q {{onepeakVoigtfunction, Voigtfitcoeff},{linear_bg, linearbgcoeff}} ywave[pcsrA,pcsrB] /X=xwave/D/C=fitcwave1
+ 	 	elseif(stringmatch(analysisfitbg,"Cubic")==1)
+ 	 		make/O/N=3 cubicbgcoeff
+ 	 		cubicbgcoeff={1,1,1}
+ 	 		FuncFit/q {{onepeakVoigtfunction, Voigtfitcoeff},{cubic_bg, cubicbgcoeff}} ywave[pcsrA,pcsrB] /X=xwave/D/C=fitcwave1
+ 	 		make/O/N=100 cubicbg
+ 	 		setscale/I x, xwave[xcsr(A)], xwave[xcsr(B)], cubicbg
+ 	 		cubicbg=cubicbgcoeff[0]+cubicbgcoeff[1]*x+cubicbgcoeff[2]*x*x+cubicbgcoeff[3]*x*x*x
+ 	 		duplicate/O cubicbg, bgcurve
+ 	 	elseif(stringmatch(analysisfitbg,"exp1")==1)
+ 	 		make/O/N=2 exp1bgcoeff
+ 	 		exp1bgcoeff={1,1}
+ 	 		FuncFit/q {{onepeakVoigtfunction, Voigtfitcoeff},{exp1_bg, exp1bgcoeff}} ywave[pcsrA,pcsrB] /X=xwave/D/C=fitcwave1
+ 	 	elseif(stringmatch(analysisfitbg,"exp2")==1)
+ 	 		make/O/N=4 exp2bgcoeff
+ 	 		exp2bgcoeff={1,1,1,1}
+ 	 		FuncFit/q {{onepeakVoigtfunction, Voigtfitcoeff},{exp2_bg, exp2bgcoeff}} ywave[pcsrA,pcsrB] /X=xwave/D/C=fitcwave1
+  		endif
+  		
+  		wave W_sigma
+  		duplicate/O W_sigma, Voigtdelta
+  		printf "The peak position is %g±%g; the peak Lor width is %g; gauss width is %g; Voigt width is %g; peak area is %g\r", Voigtfitcoeff[3], Voigtdelta[3], Voigtfitcoeff[4]/Voigtfitcoeff[2],  sqrt(ln(2))/Voigtfitcoeff[2], Voigtfitcoeff[4]/Voigtfitcoeff[2]/2+sqrt((Voigtfitcoeff[4]/Voigtfitcoeff[2]/2)^2+(sqrt(ln(2))/Voigtfitcoeff[2])^2),Voigtfitcoeff[1]/Voigtfitcoeff[2]*sqrt(pi)
+  	
+  	endif
+	
+	
+	if(stringmatch(analysisfunc,"VoigtTwo")==1)
+		make/O/N=9 Voigttwopeakfitcoeff
+		duplicate/O ywave, temp
+		setscale/P x, xwave[0], xwave[1]-xwave[0], temp
+		peaklevel=(wavemax(temp,xwave(pcsrA),xwave(pcsrB))*2+wavemin(temp,xwave(pcsrA),xwave(pcsrB))*3)/5
+		findpeak/Q/B=3/M=(peaklevel)/R=(xwave[pcsrA],xwave[pcsrB]) temp
+		w_0=wavemin(temp,xwave(pcsrA),xwave(pcsrB))
+		if(V_flag==0)
+			w_1=V_PeakVal
+			w_2=V_PeakLoc
+			w_3=V_PeakWidth
+		else
+			w_1=0
+			w_2=0
+			w_3=0
+		endif
+		findpeak/Q/B=3/M=(peaklevel)/R=(w_2+w_3/2,xwave[pcsrB]) temp
+		if(V_flag==0)
+			w_4=V_PeakVal
+			w_5=V_PeakLoc
+			w_6=V_PeakWidth
+		else
+			w_4=0
+			w_5=0
+			w_6=0
+		endif			
+		prompt w_0, "The fit function reads f=A+h1/((x-p1)^2+d1^2)⊗gauss(x-p1)+h2/((x-p2)^2+d2^2)⊗gauss(x-p2). The background A:" 
+  		Prompt w_1, "Peak1 height h1:"
+  		Prompt w_2, "Peak1 position p1(1/Å):" 
+  		Prompt w_3, "Peak1 width d1(1/Å):"
+  		Prompt w_4, "Peak2 height h2:"
+  		Prompt w_5, "Peak2 position p2(1/Å):" 
+  		Prompt w_6, "Peak2 width d2(1/Å):"
+  		doprompt "", w_0, w_1, w_2, w_3, w_4, w_5, w_6
+  		if(V_flag)
+   			return -1  //user cancel
+  		endif
+  		
+  		Voigttwopeakfitcoeff={w_0, w_1, 5/w_3, w_2, 5, w_4, 5/w_6, w_5, 5} //the fifth and nineth parameter defines the ratio between Loretizian and gaussian function, use 5 for initial value
+  		if(stringmatch(analysisfitbg,"None")==1)
+  			FuncFit/q twopeakVoigtfunction Voigttwopeakfitcoeff ywave[pcsrA,pcsrB] /X=xwave /D/C=fitcwave1
+  		elseif(stringmatch(analysisfitbg,"Linear")==1)
+  			make/O/N=1 linearbgcoeff
+ 	 		linearbgcoeff={1}
+ 	 		FuncFit/q {{twopeakVoigtfunction, Voigttwopeakfitcoeff},{linear_bg, linearbgcoeff}} ywave[pcsrA,pcsrB] /X=xwave/D/C=fitcwave1
+ 	 	elseif(stringmatch(analysisfitbg,"Cubic")==1)
+ 	 		make/O/N=3 cubicbgcoeff
+ 	 		cubicbgcoeff={1,1,1}
+ 	 		FuncFit/q {{twopeakVoigtfunction, Voigttwopeakfitcoeff},{cubic_bg, cubicbgcoeff}} ywave[pcsrA,pcsrB] /X=xwave/D/C=fitcwave1
+ 	 		make/O/N=100 cubicbg
+ 	 		setscale/I x, xwave[xcsr(A)], xwave[xcsr(B)], cubicbg
+ 	 		cubicbg=cubicbgcoeff[0]*x+cubicbgcoeff[1]*x^2+cubicbgcoeff[2]*x^3
+ 	 		duplicate/O cubicbg, bgcurve
+ 	 	elseif(stringmatch(analysisfitbg,"exp1")==1)
+ 	 		make/O/N=2 exp1bgcoeff
+ 	 		exp1bgcoeff={1,1}
+ 	 		FuncFit/q {{twopeakVoigtfunction, Voigttwopeakfitcoeff},{exp1_bg, exp1bgcoeff}} ywave[pcsrA,pcsrB] /X=xwave/D/C=fitcwave1
+ 	 	elseif(stringmatch(analysisfitbg,"exp2")==1)
+ 	 		make/O/N=4 exp2bgcoeff
+ 	 		exp2bgcoeff={1,1,1,1}
+ 	 		FuncFit/q {{twopeakVoigtfunction, Voigttwopeakfitcoeff},{exp2_bg, exp2bgcoeff}} ywave[pcsrA,pcsrB] /X=xwave/D/C=fitcwave1
+  		endif
+  		wave W_sigma
+  		duplicate/O W_sigma, Voigttwopeakdelta
+  		printf "The peak1 position is %g±%g; the peak1 Lor width is %g; gauss width is %g; Voigt width is %g; peak1 area is %g\r", Voigttwopeakfitcoeff[3], Voigttwopeakdelta[3], Voigttwopeakfitcoeff[4]/Voigttwopeakfitcoeff[2],  sqrt(ln(2))/Voigttwopeakfitcoeff[2], Voigttwopeakfitcoeff[4]/Voigttwopeakfitcoeff[2]/2+sqrt((Voigttwopeakfitcoeff[4]/Voigttwopeakfitcoeff[2]/2)^2+(sqrt(ln(2))/Voigttwopeakfitcoeff[2])^2), Voigttwopeakfitcoeff[1]/Voigttwopeakfitcoeff[2]*sqrt(pi)
+  		printf "The peak2 position is %g±%g; the peak1 Lor width is %g; gauss width is %g; Voigt width is %g; peak2 area is %g\r", Voigttwopeakfitcoeff[7], Voigttwopeakdelta[7], Voigttwopeakfitcoeff[8]/Voigttwopeakfitcoeff[6],  sqrt(ln(2))/Voigttwopeakfitcoeff[6], Voigttwopeakfitcoeff[8]/Voigttwopeakfitcoeff[6]/2+sqrt((Voigttwopeakfitcoeff[8]/Voigttwopeakfitcoeff[6]/2)^2+(sqrt(ln(2))/Voigttwopeakfitcoeff[6])^2), Voigttwopeakfitcoeff[5]/Voigttwopeakfitcoeff[6]*sqrt(pi)
+  		
+	endif
+
+	
 	if(stringmatch(analysisfunc,"GaussTwo")==1)
 		make/O/N=7 gausstwopeakfitcoeff
 		prompt w_0, "The fit function reads f=A+h1*exp(-((x-p1)/d1)^2)+h2*exp(-((x-p2)/d2)^2). The background A:" 
@@ -6788,6 +7067,33 @@ Function twopeakgaussfunction(w,x) :FitFunc
    return w[0]+w[1]*exp(-((x-w[2])/w[3])^2)+w[4]*exp(-((x-w[5])/w[6])^2)
 End
 
+Function onepeakvoigtfunction(w,x) : FitFunc
+	wave w
+	variable x
+	//CurveFitDialog/ w[0] = Y0
+	//CurveFitDialog/ w[1] = Amp
+	//CurveFitDialog/ w[2] = width
+	//CurveFitDialog/ w[3] = x0
+	//CurveFitDialog/ w[4] = shape
+	
+	return w[0]+w[1]*VoigtFunc(w[2]*(x-w[3]),w[4])
+End
+
+
+Function twopeakvoigtfunction(w,x) : FitFunc
+	wave w
+	variable x
+	//CurveFitDialog/ w[0] = Y0
+	//CurveFitDialog/ w[1] = Amp1
+	//CurveFitDialog/ w[2] = width1
+	//CurveFitDialog/ w[3] = x1
+	//CurveFitDialog/ w[4] = shape1
+	//CurveFitDialog/ w[5] = Amp2
+	//CurveFitDialog/ w[6] = width2
+	//CurveFitDialog/ w[7] = x2
+	//CurveFitDialog/ w[8] = shape2
+	return w[0]+w[1]*VoigtFunc(w[2]*(x-w[3]),w[4])+w[5]*VoigtFunc(w[6]*(X-W[7]),W[8])
+End
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
