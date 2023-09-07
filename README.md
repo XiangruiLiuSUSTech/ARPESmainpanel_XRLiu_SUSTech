@@ -7,3 +7,11 @@ mainpanel: a panel for dataload and generating other related panels for data vie
 newspectrasimulation: works for spectra simulation panel;
 
 standard_igor_plotstyle: works for quick set of graph plot in Igor Pro;
+
+Curvature - Peng ZHANG: works for second-order differential and curvature analysis for spectra data;
+
+DFTbandload: quick load and plot for DFT-calculated data;
+
+Expdatapanel: load and plot data from XRD, PPMS and XMCD;
+
+twodimcolorplot: plot the two-dimensional polarized data (especially for CD-ARPES and spin-resolved ARPES);
