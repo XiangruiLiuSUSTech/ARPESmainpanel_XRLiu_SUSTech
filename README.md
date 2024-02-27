@@ -15,3 +15,5 @@ DFTbandload: quick load and plot for DFT-calculated data;
 Expdatapanel: load and plot data from XRD, PPMS and XMCD;
 
 twodimcolorplot: plot the two-dimensional polarized data (especially for CD-ARPES and spin-resolved ARPES);
+
+a video maybe helpful for you to use mainpanel: https://www.bilibili.com/video/BV1Bv411P7KB/
