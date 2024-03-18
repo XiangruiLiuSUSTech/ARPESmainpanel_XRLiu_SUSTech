@@ -16,4 +16,6 @@ Expdatapanel: load and plot data from XRD, PPMS and XMCD;
 
 twodimcolorplot: plot the two-dimensional polarized data (especially for CD-ARPES and spin-resolved ARPES);
 
+Mainpanel使用简易教程： a short manual for new users (Chinese edition);
+
 a video maybe helpful for you to use mainpanel: https://www.bilibili.com/video/BV1Bv411P7KB/
