@@ -12,6 +12,8 @@ Curvature - Peng ZHANG: works for second-order differential and curvature analys
 
 DFTbandload: quick load and plot for DFT-calculated data;
 
+realspacemap: construct 4D map for xy scan of E-k dispersion in real space, analysis of spectra intensity distribution in xy plane;
+
 Expdatapanel: load and plot data from XRD, PPMS and XMCD;
 
 twodimcolorplot: plot the two-dimensional polarized data (especially for CD-ARPES and spin-resolved ARPES);
