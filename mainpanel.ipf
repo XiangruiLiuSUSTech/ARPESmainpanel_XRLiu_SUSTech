@@ -3,6 +3,9 @@
 #pragma igorversion=7.00
 #pragma version=1.0
 //Xiangrui Liu, 2021-12-15. 12031049@mail.sustech.edu.cn. Several function comes from the Scientaprocedure.ipf by Takeshi Kondo.
+//For latest updates, related information and other related (maybe useful) procedures, please go to the Github link below.
+//https://github.com/XiangruiLiuSUSTech/ARPESmainpanel_XRLiu_SUSTech
+
 //I change the rtGlobals parameter to 1 to avoid the error while updating the live Image view window continuously. 
 //Update by 2021-12-15: update the images in the list of mainpanel to the NewImagewindow via a variable control continuously.
 //							 add a new button to cut the redundant slices of the cut.
@@ -68,7 +71,7 @@ Window Mainpanel() : Panel
 	Button button20 title="Slicecut", pos={220,200},size={80,30},font="Times New Roman",fSize=20,proc=ButtonProc_Slicecut
 	PopupMenu popup1,pos={10.00,385.00},size={80.00,21.00},bodyWidth=80,proc=PopMenuProc_newFuncs
 	PopupMenu popup1,font="Times New Roman",fSize=16
-	PopupMenu popup1,mode=1,popvalue=" ",value= #"\"curvature;minigr;FSjoint;simulation\""
+	PopupMenu popup1,mode=1,popvalue=" ",value= #"\"curvature;minigr;FSjoint;simulation;realspacemap\""
 	TitleBox title0,pos={12.00,355.00},size={77.00,27.00},title="NewFuncs"
 	TitleBox title0,labelBack=(65535,65535,65535),font="Times New Roman",fSize=16,fStyle=1,anchor= MC
 	Button button21,pos={220.00,235.00},size={80.00,25.00},proc=ButtonProc_cuttranspose,title="Cuttranspose",font="Times New Roman",fSize=12
@@ -947,11 +950,11 @@ Function ButtonProc_Norm(ctrlName) : ButtonControl
 	endfor
 		
 		Display goldarea
-		Label left "\\F'Times New Roman'\\Z24Area";DelayUpdate
-		Label bottom "\\F'Times New Roman'\\Z24Slices";DelayUpdate
+		Label left "\\F'Arial'\\Z24Area";DelayUpdate
+		Label bottom "\\F'Arial'\\Z24Slices";DelayUpdate
 		ModifyGraph tick=2,mirror=1,fSize=16,axThick=2,standoff=0, lsize=2
 		ModifyGraph margin(left)=56,margin(bottom)=56,margin(right)=28,margin(top)=28,width=255,height=142
-		TextBox/C/N=text0/F=0/B=1/A=MC "\\F'Times New Roman'\\Z16"+polyAuwave+" area"
+		TextBox/C/N=text0/F=0/B=1/A=MC "\\F'Arial'\\Z16"+polyAuwave+" area"
 		killwaves temp
 		logtext="----------The norm process end--------------\r\r"
 		Notebook exp_logbook selection={endoffile, endoffile},fsize=12, text=logtext 
@@ -1268,14 +1271,14 @@ Function fitcurveplot()
 		ModifyGraph mode=0, lsize=2
 		ModifyGraph/Z tick=2
 	 	ModifyGraph/Z mirror=1
-	 	ModifyGraph/Z font="Times New Roman"
+	 	ModifyGraph/Z font="Arial"
 	 	ModifyGraph/Z fSize=16
 	 	ModifyGraph/Z fStyle=1
 	 	ModifyGraph/Z standoff=0
 	 	ModifyGraph/Z axThick=2
 	 	ModifyGraph margin(left)=56,margin(bottom)=56,margin(right)=28,margin(top)=28,width=340.157,height=226.772
-	 	Label/Z left "\\F'Times New Roman'\\Z24\f00Intensity (arb. units)"
-	 	Label bottom "\\F'Times New Roman'\\Z24\\f00E (eV) / k (slice/Å\\S-1\\M\\F'Times New Roman'\\Z24)"
+	 	Label/Z left "\\F'Arial'\\Z24\f00Intensity (arb. units)"
+	 	Label bottom "\\F'Arial'\\Z24\\f00E (eV) / k (slice/Å\\S-1\\M\\F'Arial'\\Z24)"
 End
 /////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1357,14 +1360,14 @@ Window NewImagePanel() : Graph
 	ModifyGraph/Z tick=2
 	ModifyGraph tickUnit(left)=1,tickUnit(bottom)=1
 	ModifyGraph/Z mirror=1
-	ModifyGraph/Z font="Times New Roman"
+	ModifyGraph/Z font="Arial"
 	ModifyGraph/Z fSize=16
 	ModifyGraph/Z fStyle=1
 	ModifyGraph/Z standoff=0
 	ModifyGraph zero(left)=4 
 	ModifyGraph axThick=2
-	Label/Z left "\\F'Times New Roman'\\Z24\f02E-E\BF\M\F'Times New Roman'\\Z24\f00 (eV)"
-	Label/Z bottom "\\F'Times New Roman'\\Z24\f00k\B//\M\F'Times New Roman'\\Z24 (Å\S-1\M\F'Times New Roman'\\Z24)"
+	Label/Z left "\\F'Arial'\\Z24\f02E-E\BF\M\F'Arial'\\Z24\f00 (eV)"
+	Label/Z bottom "\\F'Arial'\\Z24\f00k\B//\M\F'Arial'\\Z24 (Å\S-1\M\F'Arial'\\Z24)"
    
    colorscale/C/N=text0/F=0/X=105.00/Y=-5.00 nticks=0
    make/o/n=2 LivecurveY_MDC, LivecurveX_MDC
@@ -1427,11 +1430,11 @@ Function ButtonProcPlotwave (ctrlName) : ButtonControl
    		setscale/P x momentumoff, momentumdelta, MDCIntensity
 		SetAxis left energyoff, energy1
 		SetAxis bottom momentumoff, momentum1
-		Label/Z left "\\F'Times New Roman'\\Z24\f02E-E\BF\M\F'Times New Roman'\\Z24\f00 (eV)"
+		Label/Z left "\\F'Arial'\\Z24\f02E-E\BF\M\F'Arial'\\Z24\f00 (eV)"
 		if(stringmatch(liveplotoptstr,"corr")==1)
-			Label/Z bottom "\\F'Times New Roman'\\Z24\f00k\B//\M\F'Times New Roman'\\Z24 (Å\S-1\M\F'Times New Roman'\\Z24)"
+			Label/Z bottom "\\F'Arial'\\Z24\f00k\B//\M\F'Arial'\\Z24 (Å\S-1\M\F'Arial'\\Z24)"
 		else
-			Label/Z bottom "\\F'Times New Roman'\\Z24\f00slice angle (deg)"
+			Label/Z bottom "\\F'Arial'\\Z24\f00slice angle (deg)"
 		endif
 		twodimwavecurvetrack()
 		twodimwavecurvelplot()
@@ -1503,11 +1506,13 @@ Function ImagelistupdateProc(ctrlName,varNum,varStr,varName) : SetVariableContro
 		SetAxis left energyoff, energy1
 		SetAxis bottom momentumoff, momentum1
 
-		Label/Z left "\\F'Times New Roman'\\Z24\f02E-E\BF\M\F'Times New Roman'\\Z24\f00 (eV)"
+		Label/Z left "\\F'Arial'\\Z24\f02E-E\BF\M\F'Arial'\\Z24\f00 (eV)"
 		if(stringmatch(liveplotoptstr,"corr")==1)
-			Label/Z bottom "\\F'Times New Roman'\\Z24\f00k\B//\M\F'Times New Roman'\\Z24 (Å\S-1\M\F'Times New Roman'\\Z24)"
+			Label/Z bottom "\\F'Arial'\\Z24\f00k\B//\M\\Z24 (\F'Times New Roman'Å\S-1\M\F'Arial'\\Z24)"
+		elseif(stringmatch(liveplotoptstr,"nr+corr")==1)
+			Label/Z bottom "\\F'Arial'\\Z24\f00k\B//\M\\Z24 (\F'Times New Roman'Å\S-1\M\F'Arial'\\Z24)"
 		else
-			Label/Z bottom "\\F'Times New Roman'\\Z24\f00slice angle (deg)"
+			Label/Z bottom "\\F'Arial'\\Z24\f00slice angle (deg)"
 		endif
 		twodimwavecurvetrack()
 		twodimwavecurvelplot()
@@ -1572,8 +1577,8 @@ Function twodimwavecurvelplot()
 	ModifyGraph/W=NewImagewindow offset(LivecurveY_EDC)={midy,0}
 	ModifyGraph/W=NewImagewindow offset(LivecurveY_MDC)={0,midx}
    ModifyGraph tick(EDCaxisL)=2,tick(MDCaxisL)=2,tick(EDCaxisB)=2,tick(MDCaxisB)=2
-   ModifyGraph fStyle(MDCaxisL)=1,fSize(MDCaxisL)=16,font(MDCaxisL)="Times New Roman"
-   ModifyGraph fStyle(EDCaxisB)=1,fSize(EDCaxisB)=16,font(EDCaxisB)="Times New Roman"
+   ModifyGraph fStyle(MDCaxisL)=1,fSize(MDCaxisL)=16,font(MDCaxisL)="Arial"
+   ModifyGraph fStyle(EDCaxisB)=1,fSize(EDCaxisB)=16,font(EDCaxisB)="Arial"
    Doupdate;
    imageplotaxisupdate()
 	setwindow NewImagewindow, hook(Imagehook)=NewImageHook
@@ -1766,9 +1771,9 @@ Function ButtonProcAuEffit(ctrlName) : ButtonControl
 	endfor
 	
 	Display $auEFwave
-	ModifyGraph tick=2,mirror=1,fSize=20,axThick=2,standoff=0,font="Times New Roman"
-	Label left "\\F'Times New Roman'\\Z24\\f02E\\BF\\M\\f00 (eV)"
-	Label bottom "\\F'Times New Roman'\\Z24slices"
+	ModifyGraph tick=2,mirror=1,fSize=20,axThick=2,standoff=0,font="Arial"
+	Label left "\\F'Arial'\\Z24\\f02E\\BF\\M\\f00 (eV)"
+	Label bottom "\\F'Arial'\\Z24slices"
 	ModifyGraph mode=4,marker=19,msize=2,mrkThick=1,rgb=(2,39321,1)
 	
 	CurveFit/Q/L=(size2) /X=1 poly 10, $auEFwave /D 
@@ -1870,22 +1875,22 @@ Function ButtonProcScope(ctrlName) : ButtonControl
 	
 	ModifyGraph width=453.543,height=340.157
 	ModifyGraph margin(left)=70,margin(bottom)=70,margin(right)=28,margin(top)=28
-	ModifyGraph mirror=1,fStyle=1,fSize=16,font="Times New Roman"
+	ModifyGraph mirror=1,fStyle=1,fSize=16,font="Arial"
 	ModifyGraph tick=2,lsize=2
 	ModifyGraph axThick=2
 	Showinfo/w=NewScopewindow
 	if(stringmatch(scopetype,"EDC")==1)
-		Label left "\\F'Times New Roman'\\Z24\\f00 EDC Intensity (arb. units)"
-		Label bottom "\\F'Times New Roman'\\Z24\\f02 E-E\\BF\\M\\F'Times New Roman'\\Z24 \\f00(eV)"
+		Label left "\\F'Arial'\\Z24\\f00 EDC Intensity (arb. units)"
+		Label bottom "\\F'Arial'\\Z24\\f02 E-E\\BF\\M\\F'Arial'\\Z24 \\f00(eV)"
 		ModifyGraph zero(bottom)=4, zeroThick(bottom)=2
 	endif
 	
 	if(stringmatch(scopetype,"MDC")==1)
-		Label left "\\F'Times New Roman'\\Z24\\f00 MDC Intensity (arb. units)"
+		Label left "\\F'Arial'\\Z24\\f00 MDC Intensity (arb. units)"
 		if(stringmatch(liveplotoptstr,"*corr")==1)
-			Label bottom "\\F'Times New Roman'\\Z24\\f00k\\B//\\M\\F'Times New Roman'\\Z24 (Å\\S-1\\M\\F'Times New Roman'\\Z24)"
+			Label bottom "\\F'Arial'\\Z24\\f00k\\B//\\M\\F'Arial'\\Z24 (Å\\S-1\\M\\F'Arial'\\Z24)"
 		else
-			Label bottom "\\F'Times New Roman'\\Z24\\f00 k (slice/angle)"
+			Label bottom "\\F'Arial'\\Z24\\f00 k (slice/angle)"
 		endif
 		ModifyGraph zero(bottom)=4, zeroThick(bottom)=2
 	endif
@@ -2048,14 +2053,14 @@ Function ButtonProc_NewScopeGraph(ctrlName) : ButtonControl
 	endfor
 	ModifyGraph width=453.543,height=340.157
 	ModifyGraph margin(left)=70,margin(bottom)=70,margin(right)=28,margin(top)=28
-	ModifyGraph mirror=1,fStyle=1,fSize=16,font="Times New Roman"
+	ModifyGraph mirror=1,fStyle=1,fSize=16,font="Arial"
 	ModifyGraph tick=2,lsize=2
 	ModifyGraph axThick=2
-	Label left "\\F'Times New Roman'\\Z24\\f00 EDC Intensity (arb. units)"
+	Label left "\\F'Arial'\\Z24\\f00 EDC Intensity (arb. units)"
 	if(stringmatch(EDCMDCcheck,"EDC")==1)
-		Label bottom "\\F'Times New Roman'\\Z24\\f02 E-E\\BF\\M\\F'Times New Roman'\\Z24 \\f00(eV)"
+		Label bottom "\\F'Arial'\\Z24\\f02 E-E\\BF\\M\\F'Arial'\\Z24 \\f00(eV)"
 	else
-		Label bottom "\\F'Times New Roman'\\Z24\\f00 k (slice/angle)"
+		Label bottom "\\F'Arial'\\Z24\\f00 k (slice/angle)"
 	endif
 	ModifyGraph zero(bottom)=4, zeroThick(bottom)=2
 	
@@ -2940,13 +2945,13 @@ Function ButtonProc3DMapAreaspectra()
 		ModifyGraph zero=4,zeroThick=2,axThick=2
 		ModifyGraph font="Times New Roman",fSize=16
 		ModifyGraph margin(left)=56,margin(bottom)=42,margin(right)=28,margin(top)=28
-		Label left "\\F'Times New Roman'\\Z20AreaIntensity (a. u.)"
+		Label left "\\F'Arial'\\Z20AreaIntensity (a. u.)"
 		ModifyGraph width=340,height=255
 		controlbar 30
 		Button button0,pos={1.00,1.00},size={78.00,28.00},proc=ButtonProc_Areaspectraupdate,title="Update",font="Times New Roman",fSize=16
 		Button button1,pos={89.00,1.00},size={68.00,28.00},proc=ButtonProc_Areaspectraexport,title="Export",font="Times New Roman",fSize=16
 
-		TextBox/C/N=text0/F=0/A=MC "\\F'Times New Roman'\\Z20A X:"+num2str(x1)+" Y:"+num2str(y1)+"\rB X:"+num2str(x2)+" Y:"+num2str(y2)
+		TextBox/C/N=text0/F=0/A=MC "\\F'Arial'\\Z20A X:"+num2str(x1)+" Y:"+num2str(y1)+"\rB X:"+num2str(x2)+" Y:"+num2str(y2)
 	endif
 End
 
@@ -2970,7 +2975,7 @@ Function ButtonProc_Areaspectraupdate(ctrlName) : ButtonControl
 	variable x1=xcsr(A), x2=xcsr(B)
 	variable y1=vcsr(A), y2=vcsr(B)
 	dowindow/f AreaSpectraGraph
-	TextBox/C/N=text0/F=0/B=1/A=MC "\\F'Times New Roman'\\Z20A X:"+num2str(x1)+" Y:"+num2str(y1)+"\rB X:"+num2str(x2)+" Y:"+num2str(y2)
+	TextBox/C/N=text0/F=0/B=1/A=MC "\\F'Arial'\\Z20A X:"+num2str(x1)+" Y:"+num2str(y1)+"\rB X:"+num2str(x2)+" Y:"+num2str(y2)
 End
 
 
@@ -2987,7 +2992,7 @@ Function ButtonProc_Areaspectraexport(ctrlName) : ButtonControl
 	ModifyGraph zero=4,zeroThick=2,axThick=2
 	ModifyGraph font="Times New Roman",fSize=16
 	ModifyGraph margin(left)=56,margin(bottom)=42,margin(right)=28,margin(top)=28
-	Label left "\\F'Times New Roman'\\Z20AreaIntensity (a. u.)"
+	Label left "\\F'Arial'\\Z20AreaIntensity (a. u.)"
 	ModifyGraph width=340,height=255
 	TextBox/C/N=text0/F=0/B=1/A=MC s1
 End
@@ -3010,36 +3015,76 @@ End
 Function ButtonProc3DMapkxkymap()	
 	wave threeDmap
 	String/g cubicmapname
-	variable Ef, aziangle
-	prompt Ef "Please first set the energy axis to Z, enter the fermi energy(eV):"
+	variable Ef, aziangle, i, j 
+	prompt Ef "Please first set the energy axis to Z, enter the fermi energy (eV):"
 	prompt aziangle "enter the azimuth angle:"
 	doprompt "", Ef, aziangle
 	if(V_flag)
 		return -1 //user cancel
 	endif
 	
-	variable thetaX1, thetaX2, thetaY1, thetaY2, kx1, kx2, ky1, ky2, azi
+	variable thetaX1, thetaX2, thetaY1, thetaY2, thetamax, kmax, azi
+	variable xdelta=dimdelta(threeDmap,0), ydelta=dimdelta(threeDmap,1), zdelta=dimdelta(threeDmap,2)
+	variable xsize=dimsize(threeDmap,0), ysize=dimsize(threeDmap,1), zsize=dimsize(threeDmap,2)
+	variable xoff=dimoffset(threeDmap,0), yoff=dimoffset(threeDmap,1), zoff=dimoffset(threeDmap,2)
+	
+	make/O/N=(xsize, ysize) currentwave
+	if(xdelta<ydelta)
+		variable n=floor(ydelta/xdelta)
+		make/O/N=(xsize, n*ysize, zsize) temp
+		setscale/p x xoff, xdelta, "", temp
+		setscale/p y yoff, ydelta/n, "", temp
+		for(i=0; i<zsize; i+=1)
+			currentwave[][]=threeDmap[p][q][i]
+			Imageinterpolate/f={1,n}/dest=temp1 bilinear, currentwave  
+			temp[][][i]=temp1[p][q]
+		endfor
+	else
+		n=floor(xdelta/ydelta)
+		make/O/N=(n*xsize,ysize, zsize) temp
+		setscale/p x xoff, xdelta/n, "", temp
+		setscale/p y yoff, ydelta, "", temp
+		for(i=0; i<zsize; i+=1)
+			currentwave[][]=threeDmap[p][q][i]
+			Imageinterpolate/f={n,1}/dest=temp1 bilinear, currentwave  
+			temp[][][i]=temp1[p][q]
+		endfor
+	endif
+	
+	setscale/p z zoff, zdelta, "", temp
+	
 	thetaX1=dimoffset(threeDmap,0); thetaY1=dimoffset(threeDmap,1)
 	thetaX2=thetaX1+dimdelta(threeDmap,0)*(dimsize(threeDmap,0)-1)
 	thetaY2=thetaY1+dimdelta(threeDmap,1)*(dimsize(threeDmap,1)-1)
 	
-	kx1=0.51197*sqrt(Ef)*sin(thetaX1/180*pi)
-	kx2=0.51197*sqrt(Ef)*sin(thetaX2/180*pi)
-	ky1=0.51197*sqrt(Ef)*sin(thetaY1/180*pi)
-	ky2=0.51197*sqrt(Ef)*sin(thetaY2/180*pi)
+	thetamax=max(abs(thetaX1),abs(thetaX2),abs(thetaY1),abs(thetaY2))
+	kmax=ceil(0.51197*sqrt(Ef)*sin(thetamax/180*pi)*2)/2
 	
-	duplicate/O threeDmap, temp
-	setscale/I x kx1, kx2, temp
-	setscale/I y ky1, ky2, temp
-	duplicate/O temp, $cubicmapname+"_rot"
-	wave newmapwave=	 $cubicmapname+"_rot"
+	variable nsize=ceil(max(dimsize(temp,1), dimsize(temp,0))/100)
+	make/O/N=(nsize*100+1,nsize*100+1, zsize) temp2
+	setscale/I x -kmax, kmax, "", temp2
+	setscale/I y -kmax, kmax, "", temp2
+	setscale/p z zoff, zdelta, "", temp2
+	
+	for(i=0; i<dimsize(temp,0); i+=1)
+		for(j=0; j<dimsize(temp,1); j+=1)
+			//kx=0.51197*sqrt(Ef+IndextoScale(temp,r,2))*sin(thetaX)
+			//ky=0.51197*sqrt(Ef+IndextoScale(temp,r,2))*cos(thetaX)*sin(thetaY)
+		multithread temp2[ScaletoIndex(temp2,0.51197*sqrt(Ef )*sin(Indextoscale(temp,i,0)*pi/180),0)][ScaletoIndex(temp2,0.51197*sqrt(Ef )*cos(Indextoscale(temp,i,0)*pi/180)*sin(Indextoscale(temp,j,1)*pi/180),1)][]=temp[i][j][r]
+		endfor
+	endfor
+	
+	
+	duplicate/O temp2, $cubicmapname+"_rot"
+	wave newmapwave= $cubicmapname+"_rot"
 	//map rotation
 	azi=aziangle/180*pi
-	newmapwave[][][]=temp(Indextoscale(newmapwave,p,0)*cos(-azi)-Indextoscale(newmapwave,q,1)*sin(-azi))(Indextoscale(newmapwave,p,0)*sin(-azi)+Indextoscale(newmapwave,q,1)*cos(-azi))[r]	
+	multithread newmapwave[][][]=temp2(Indextoscale(newmapwave,p,0)*cos(-azi)-Indextoscale(newmapwave,q,1)*sin(-azi))(Indextoscale(newmapwave,p,0)*sin(-azi)+Indextoscale(newmapwave,q,1)*cos(-azi))[r]	
 	threeDmapload(cubicmapname+"_rot")
 	cubicmapname=cubicmapname+"_rot"
 
-	killwaves temp
+	killwaves temp, temp1, temp2
+	print "convert to "+cubicmapname+" with Ef = "+num2str(Ef)+" eV, kx and ky scales in 1/Å\r "
 End
 
 Function ButtonProc3DMapkzmap()
@@ -3113,6 +3158,8 @@ Function ButtonProc3DMapkzmap()
 	killwaves temp, temp1, temp2, inter
 	threeDmapload(mapname)
 	cubicmapname=mapname
+	
+	print "convert to "+mapname+" with V0 = "+num2str(V_0)+" eV, kp and kz scales in 1/Å\r"
 End
 
 Function ButtonProc3DMapNewGraph(ctrlName) : ButtonControl
@@ -3231,6 +3278,11 @@ Window FSrotatPanel() : Panel
 	Button button3,font="Times New Roman",fSize=20
 	Button button4,pos={155.00,205.00},size={120.00,30.00},proc=Buttonproc_3DMapRotation,title="3D Rotation"
 	Button button4,font="Times New Roman",fSize=20
+	Button button5,pos={250.00,145.00},size={70.00,30.00},proc=ButtonProc_FSexport,title="Export"
+	Button button5,font="Times New Roman",fSize=20
+	Button button6,pos={155.00,237.00},size={78.00,27.00},proc=ButtonProc_FSrotat_lineprofile,title="LineProfile"
+	Button button6,font="Times New Roman",fSize=14
+
 	SetVariable setvar0,pos={100.00,15.00},size={90.00,22.00},proc=SetVarProc_FSenergy,title="E"
 	SetVariable setvar0,font="Times New Roman",fSize=16
 	SetVariable setvar0,limits={-inf,inf,0.01},value= FSenergy
@@ -3276,8 +3328,7 @@ Window FSrotatPanel() : Panel
 	PopupMenu popup0,mode=1,value= #"\"*COLORTABLEPOP*\""
 	CheckBox check0,pos={290.00,180.00},size={50.00,19.00},proc=CheckProc_FSinvertcheck,title="Invert"
 	CheckBox check0,font="Times New Roman",fSize=16,value= 1,side= 1
-	Button button5,pos={250.00,145.00},size={70.00,30.00},proc=ButtonProc_FSexport,title="Export"
-	Button button5,font="Times New Roman",fSize=20
+	
 	SetVariable setvar14,pos={260.00,120.00},size={85.00,22.00},title="MaxK"
 	SetVariable setvar14,font="Times New Roman",fSize=16
 	SetVariable setvar14,limits={1,4,1},value= _NUM:2,proc=SetVarProc_FSMaxK
@@ -3564,7 +3615,7 @@ Function Buttonproc_FSMapRotation (ctrlName) : ButtonControl
   		display/W=(279,112,683,496); 
   		dowindow/c FSrotateMapping
   		AppendImage FSrotateMap 
-  		ModifyGraph margin(left)=75,margin(bottom)=75,margin(right)=42,margin(top)=28,width=368.504,height={Aspect,1}
+  		ModifyGraph margin(left)=75,margin(bottom)=75,margin(right)=42,margin(top)=28,width=255.118,height={Aspect,1}
 		ModifyGraph mirror=1,fStyle=1,fSize=16,font="Times New Roman"
 		ModifyGraph standoff=0, tick=2, zero=4,zeroThick=2
 		ModifyGraph axThick=2
@@ -3717,6 +3768,200 @@ Function Buttonproc_3DMapRotation (ctrlName) : ButtonControl
 	killwindow threedimRotationprogress	
 	killwaves temp, temp2,Ywave,Zwave,x2wave,y2wave
 End
+
+Function ButtonProc_FSrotat_lineprofile(ctrlName) : ButtonControl
+	String ctrlName
+	wave FSrotatemap
+	variable/g FSlp_k1, FSlp_kint, FSlp_dk
+	variable/g meshsize, MaxK, FSenergy
+	string/g FSmapname, FSlp_kopt
+	string kopt
+	variable k1, dk, kint, knum
+	variable i, j
+	
+	prompt kopt "Please choose the momentum direction:", popup "kx;ky"
+	prompt k1 "Please enter the initial momentum:"
+	prompt dk "Please enter the MDC integral width:"
+	prompt kint "Please enter the MDC interval:"
+	prompt knum "Please enter the MDC num:"
+	doprompt "", kopt, k1, dk, kint, knum
+	
+	if(V_flag)
+		return -1
+	endif
+	
+	FSlp_k1=k1; FSlp_kint=kint;FSlp_dk=dk
+	FSlp_kopt=kopt
+	make/O/N=(meshsize*100+1) FSlptemp
+	setscale/I x, -MaxK, MaxK, "", FSlptemp
+	
+	for(i=0; i<knum; i+=1)
+		FSlptemp[]=0
+		for(j=ScaletoIndex(FSrotatemap,k1+kint*i,1);j<=ScaletoIndex(FSrotatemap,k1+kint*i+dk,1);j+=1)
+			if(stringmatch(kopt, "kx"))
+				FSlptemp[]+=FSrotatemap[p][j]
+			else
+				FSlptemp[]+=FSrotatemap[j][p]
+			endif
+		endfor
+		duplicate/O FSlptemp, $"FSlp"+num2str(i+1)
+	endfor
+	
+	dowindow/f FSlineprofile
+	if(V_flag!=1)
+		display/W=(279,112,683,496); 
+		ControlBar 50
+		SetVariable setvar0,pos={8.00,6.00},size={120.00,25.00},proc=SetVarProc_FSlineprofileoffset,title="Offset"
+		SetVariable setvar0,font="Times New Roman",fSize=20,value= _NUM:0,limits={0,inf,0}
+		Button button0,pos={285.00,5.00},size={110.00,30.00},proc=ButtonProc_FSlineprofileMDCfit,title="MDCpeakfit"
+		Button button0,font="Times New Roman",fSize=20
+		SetVariable setvar1,pos={130.00,5.00},size={60.00,25.00},title="k1"
+		SetVariable setvar1,font="Times New Roman",fSize=20,limits={0,inf,0},value=FSlp_k1
+		SetVariable setvar2,pos={200.00,5.00},size={80.00,25.00},title="kint"
+		SetVariable setvar2,font="Times New Roman",fSize=20,limits={-inf,inf,0}, value=FSlp_kint
+
+  		dowindow/c FSlineprofile
+  		ModifyGraph margin(left)=56,margin(bottom)=56,margin(right)=28,margin(top)=28,width=255.118,height=170.079
+	else
+		SetVariable setvar0,value= _NUM:0
+		string traceplotlist=wavelist("*",";","WIN:FSlineprofile")
+		variable plotnum=itemsinlist(traceplotlist)
+		for(j=0; j<plotnum; j+=1)
+			Removefromgraph/W=FSlineprofile $StringFromList(j, traceplotlist)   
+		endfor
+	endif
+	
+	for(i=0; i<knum; i+=1)
+		Appendtograph/W=FSlineprofile $"FSlp"+num2str(i+1)
+	endfor
+	
+	FSlineprofileplot( )
+	print "Show line profile of "+FSmapname+" FS at "+num2str(FSenergy)+" eV at "+kopt+" = "+num2str(k1)+" Å, integral within "+num2str(dk)+" Å, interval of "+num2str(kint)+" Å;"
+End
+
+Function FSlineprofileplot( )
+	variable i, num
+	string/g FSlp_kopt
+	
+	ModifyGraph/Z lsize=2
+	ModifyGraph tick=2,mirror=1,fSize=20,axThick=2,standoff(bottom)=0,font="Arial",zero(bottom)=4,zeroThick(bottom)=2
+	Label left "\\F'Arial'\\Z24MDC Intensity";DelayUpdate
+	if(stringmatch(FSlp_kopt, "kx"))
+		Label bottom "\\F'Arial'\\Z24\\f02k\\Bx\\M\\Z24\\f00 (Å\\S-1\\M\\Z24)"
+	else
+		Label bottom "\\F'Arial'\\Z24\\f02k\\By\\M\\Z24\\f00 (Å\\S-1\\M\\Z24)"
+	endif
+	Showinfo
+End
+
+Function SetVarProc_FSlineprofileoffset(ctrlName,varNum,varStr,varName) : SetVariableControl
+	String ctrlName
+	Variable varNum
+	String varStr
+	String varName
+	
+	string plotlist=wavelist("*",";", "WIN:FSlineprofile")
+	variable num=itemsinlist(plotlist)
+	variable i
+	for(i=0; i<num; i+=1)
+		string curstr=stringfromlist(i, plotlist)
+		ModifyGraph/Z offset($curstr)={0, i*varNum}
+	endfor
+End
+
+Function ButtonProc_FSlineprofileMDCfit(ctrlName) : ButtonControl //two-peak Voigt function fit for MDC
+	String ctrlName
+	string plotlist=wavelist("*",";", "WIN:FSlineprofile")
+	string/g FSlp_kopt
+	variable/g FSlp_k1, FSlp_kint, FSlp_dk
+	variable num=itemsinlist(plotlist)
+	variable w_0, w_1, w_2, w_3, w_4, w_5, w_6, w_7, w_8
+	variable peaklevel, i
+	
+	dowindow/f FSlineprofile
+	if(V_flag==0)
+		Abort "Please show FS line profiles first!"
+	endif
+	if (stringmatch(CsrWave(a,""),"") || stringmatch(CsrWave(b,""),"") ||stringmatch(Csrwave(a),Csrwave(b))==0)
+       Abort "Set A and B cursors on the same trace!!"
+  	endif
+	
+	make/O/T/N=1 fitcwave1="K0>0"
+	make/O/N=9 FSlp_Voigttwopeakfitcoeff
+	make/O/N=(2*num) FSlp_Voigttwopeaksigma, FSlp_Voigttwopeakpos
+	make/O/N=(2*num) FSlp_kpos
+	FSlp_kpos[]=FSlp_k1+floor(p/2)*FSlp_kint
+	//findpeak
+	duplicate/O $stringfromlist(0,plotlist), temp
+	peaklevel=(wavemax(temp,xcsr(A),xcsr(B))*2+wavemin(temp,xcsr(A),xcsr(B))*3)/5
+	
+	findpeak/Q/B=3/M=(peaklevel)/R=(xcsr(A),xcsr(B)) temp
+	w_0=wavemin(temp,xcsr(A),xcsr(B))
+	if(V_flag==0)
+		w_1=V_PeakVal-w_0
+		w_2=V_PeakLoc
+		w_3=V_PeakWidth
+	else
+		w_1=0
+		w_2=0
+		w_3=0
+	endif
+	findpeak/Q/B=3/M=(peaklevel)/R=(w_2+w_3/2,xcsr(B)) temp
+	if(V_flag==0)
+		w_4=V_PeakVal-w_0
+		w_5=V_PeakLoc
+		w_6=V_PeakWidth
+	else
+		w_4=0
+		w_5=0
+		w_6=0
+	endif	
+	
+	prompt w_0, "This is two peak Voigt function fit procedure for MDC profile. The fit function reads f=A+h1/((x-p1)^2+d1^2)⊗gauss(x-p1)+h2/((x-p2)^2+d2^2)⊗gauss(x-p2). The background A:" 
+  	Prompt w_1, "Peak1 height h1:"
+  	Prompt w_2, "Peak1 position p1(1/Å):" 
+  	Prompt w_3, "Peak1 width d1(1/Å):"
+  	Prompt w_4, "Peak2 height h2:"
+  	Prompt w_5, "Peak2 position p2(1/Å):" 
+  	Prompt w_6, "Peak2 width d2(1/Å):"
+  	doprompt "", w_0, w_1, w_2, w_3, w_4, w_5, w_6
+  	if(V_flag)
+   		return -1  //user cancel
+  	endif
+  		
+  	FSlp_Voigttwopeakfitcoeff={w_0, w_1, 5/w_3, w_2, 5, w_4, 5/w_6, w_5, 5} //the fifth and nineth parameter defines the ratio between Loretizian and gaussian function, use 5 for initial value	
+	for(i=0; i<num; i+=1)
+		duplicate/O $stringfromlist(i,plotlist), temp
+		FuncFit/q twopeakVoigtfunction FSlp_Voigttwopeakfitcoeff temp[pcsr(A),pcsr(B)]/D/C=fitcwave1
+		wave W_sigma
+		FSlp_Voigttwopeakpos[2*i]=FSlp_Voigttwopeakfitcoeff[3]
+		FSlp_Voigttwopeakpos[2*i+1]=FSlp_Voigttwopeakfitcoeff[7]
+		FSlp_Voigttwopeaksigma[2*i]=W_Sigma[3]
+		FSlp_Voigttwopeaksigma[2*i+1]=W_Sigma[7]
+	endfor
+	
+	Display; Delayupdate
+	AppendtoGraph FSlp_Voigttwopeakpos vs FSlp_kpos
+	ErrorBars FSlp_Voigttwopeakpos XY,const=FSlp_dk/2,wave=(FSlp_Voigttwopeaksigma,FSlp_Voigttwopeaksigma)
+	
+	ModifyGraph mode=3,marker=8,msize=3,mrkThick=1
+	ModifyGraph tick=2,mirror=1,fSize=20,axThick=2,standoff=0,font="Arial"
+	ModifyGraph margin(left)=56,margin(bottom)=56,margin(right)=28,margin(top)=28,width=255.118,height={Plan,1,left,bottom}
+	if(stringmatch(FSlp_kopt, "kx"))
+		Label bottom "\\F'Arial'\\Z20\\f02k\\By\\M\\Z20\\f00 (Å\\S-1\\M\\Z24)"
+		Label left "\\F'Arial'\\Z20\\f02k\\Bx\\M\\Z20\\f00 (Å\\S-1\\M\\Z24)"
+	else
+		Label bottom "\\F'Arial'\\Z20\\f02k\\Bx\\M\\Z20\\f00 (Å\\S-1\\M\\Z24)"
+		Label left "\\F'Arial'\\Z20\\f02k\\By\\M\\Z20\\f00 (Å\\S-1\\M\\Z24)"
+	endif
+	
+	variable FSarea=0
+	for(i=0; i<num; i+=1)
+		FSarea+=abs(FSlp_Voigttwopeakpos[2*i+1]-FSlp_Voigttwopeakpos[2*i])*FSlp_kint
+	endfor
+	printf "The area enclosed by the FS is %g Å^2\r", FSarea
+End
+
 
 Function PopMenuProc_FSrotatemapcolor(ctrlName,popNum,popStr) : PopupMenuControl
 	String ctrlName
@@ -7535,14 +7780,14 @@ Function ButtonProc_Getselfenergy(ctrlName) : ButtonControl
 	AppendtoGraph ReSigma vs selfMDCEnergy
 	AppendtoGraph ImSigma vs selfMDCEnergy
 	ModifyGraph/Z tick=2, mirror=1, lsize=2
-	ModifyGraph/Z font="Times New Roman"
+	ModifyGraph/Z font="Arial"
 	ModifyGraph/Z fSize=16, fStyle=1, standoff=0
 	ModifyGraph/Z axThick=2
-	Label/Z left "\\F'Times New Roman'\\Z24\f00Σ (meV)"
-	Label bottom "\\F'Times New Roman'\\Z24\\f02 E-E\\BF\\M \\F'Times New Roman'\\Z24\\f00(eV)"
+	Label/Z left "\\F'Arial'\\Z24\f00Σ (meV)"
+	Label bottom "\\F'Arial'\\Z24\\f02 E-E\\BF\\M \\F'Arial'\\Z24\\f00(eV)"
   	ModifyGraph margin(left)=56,margin(bottom)=56,margin(right)=28,margin(top)=28,width=340.157,height=255.118
 	ModifyGraph rgb(ImSigma)=(0,0,65535)
-	Legend/C/N=text0/J/F=0/B=1/A=MC "\\F'Times New Roman'\\Z24\\s(ReSigma) ReSigma\r\\s(ImSigma) ImSigma"
+	Legend/C/N=text0/J/F=0/B=1/A=MC "\\F'Arial'\\Z24\\s(ReSigma) ReSigma\r\\s(ImSigma) ImSigma"
 End
 
 
@@ -7560,6 +7805,8 @@ Function PopMenuProc_newFuncs(ctrlName,popNum,popStr) : PopupMenuControl
 		execute "curv_ini()"
 	elseif(stringmatch(popStr,"simulation")==1)
 		newsimpanel()
+	elseif(stringmatch(popStr,"realspacemap")==1)
+		makerealspacemap()
 	endif
 End
 
@@ -7599,15 +7846,15 @@ Function minigr() // mini gradient to emphasize the band dispersion
 	AppendImage $minigrwavestr+"minigr"
 	ModifyGraph/Z tick=2
 	ModifyGraph/Z mirror=1
-	ModifyGraph/Z font="Times New Roman"
+	ModifyGraph/Z font="Arial"
 	ModifyGraph/Z fSize=16
 	ModifyGraph/Z fStyle=1
 	ModifyGraph/Z standoff=0
 	ModifyGraph swapXY=1 
 	ModifyGraph zero(left)=4
 	ModifyGraph axThick=2
-	Label/Z left "\\F'Times New Roman'\\Z24\f02E-E\BF\M\F'Times New Roman'\\Z24\f00 (eV)"
-	Label/Z bottom "\\F'Times New Roman'\\Z24\f00k\B//\M\F'Times New Roman'\\Z24 (Å\S-1\M\F'Times New Roman'\\Z24)"
+	Label/Z left "\\F'Arial'\\Z24\f02E-E\BF\M\F'Arial'\\Z24\f00 (eV)"
+	Label/Z bottom "\\F'Arial'\\Z24\f00k\B//\M\F'Arial'\\Z24 (Å\S-1\M\F'Arial'\\Z24)"
    ModifyGraph margin(left)=70,margin(bottom)=56,margin(right)=28,margin(top)=28,width=269.291,height=340.157
    ModifyImage/Z $minigrwavestr+"minigr" ctab={0,1,Grays,1}
 End
@@ -7683,13 +7930,13 @@ Function FSmapjointplot()
 	ModifyImage/Z [0] ctab= {*,*,Terrain256,1}
 	ModifyGraph/Z tick=2
 	ModifyGraph/Z mirror=1
-	ModifyGraph/Z font="Times New Roman"
+	ModifyGraph/Z font="Arial"
 	ModifyGraph/Z fSize=16
 	ModifyGraph/Z fStyle=1
 	ModifyGraph/Z standoff=0
 	ModifyGraph zero=4
 	ModifyGraph axThick=2
-	Label/Z left "\\F'Times New Roman'\\Z24\f00k\By\M\F'Times New Roman'\\Z24 (Å\S-1\M\F'Times New Roman'\\Z24)"
-	Label/Z bottom "\\F'Times New Roman'\\Z24\f00k\Bx\M\F'Times New Roman'\\Z24 (Å\S-1\M\F'Times New Roman'\\Z24)"
+	Label/Z left "\\F'Arial'\\Z24\f00k\By\M\F'Arial'\\Z24 (Å\S-1\M\F'Arial'\\Z24)"
+	Label/Z bottom "\\F'Arial'\\Z24\f00k\Bx\M\F'Arial'\\Z24 (Å\S-1\M\F'Arial'\\Z24)"
    ModifyGraph margin(left)=70,margin(bottom)=56,margin(right)=28,margin(top)=28,width=269.291,height={Plan,1,left,bottom}
 End
