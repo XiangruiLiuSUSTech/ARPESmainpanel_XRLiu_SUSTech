@@ -41,7 +41,7 @@ Window Mainpanel() : Panel
 	ModifyPanel cbRGB=(65535,65535,0)
 	PopupMenu popup0,pos={135.00,3.00},size={105.00,21.00},proc=PopMenuProc_datatype,title="Data type"
 	PopupMenu popup0,font="Times New Roman",fSize=16
-	PopupMenu popup0,mode=2,popvalue=".txt",value= #"\".txt;.pxt;.xy;.ibw;DA30;MBS\""
+	PopupMenu popup0,mode=2,popvalue=".txt",value= #"\".txt;.pxt;.xy;.ibw;DA30;MBStxt\""
 	Button button0,pos={14.00,2.00},size={111.00,45.00},proc=ButtonProc_newdatapath,title="Data Path"
 	Button button0,font="Times New Roman",fSize=24,fColor=(0,65535,0)
 	ListBox list0,pos={18.00,54.00},size={195.00,220.00},font="Times New Roman"
@@ -98,7 +98,7 @@ Function PopMenuProc_datatype(ctrlName,popNum,popStr) : PopupMenuControl
 	String popStr
 	if(stringmatch(popStr,"DA30")==1)
 		string/g datatype=".bin"
-	elseif(stringmatch(popStr,"MBS")==1)
+	elseif(stringmatch(popStr,"MBStxt")==1)
 		string/g datatype=".txt"
 	else
 		String/g datatype=popStr
@@ -2410,25 +2410,34 @@ Function NewMapHook(s)
 		
 		case 11: //keyboard event
 			switch(s.keycode-30)
-				case -2: 
+				case -2: //leftarrow
 					threedimmapX-=deltaZ
 					ModifyGraph/Z/w=NewMapWindow offset(LiveCurveYY)={threedimmapX,0}
 				break
-				case -1: 
+				case -1:  //rightarrow
 					threedimmapX+=deltaZ
 					ModifyGraph/Z/w=NewMapWindow offset(LiveCurveYY)={threedimmapX,0}
 				break
-				case 0: 
+				case 0: //uparrow
 					threedimmapY+=deltaZ
 					ModifyGraph/Z/w=NewMapWindow offset(LiveCurveXX)={threedimmapY,0}
 				break
-				case 1: 
+				case 1: //downarrow
 					threedimmapY-=deltaZ
 					ModifyGraph/Z/w=NewMapWindow offset(LiveCurveXX)={threedimmapY,0}
 				break
+				case -19: //pageup
+					threedimmapZ+=deltaZ
+					ModifyGraph/Z/w=NewMapWindow offset(LiveCurveZY)={threedimmapZ,0}
+				break
+				case -18: //pagedown
+					threedimmapZ-=deltaZ
+					ModifyGraph/Z/w=NewMapWindow offset(LiveCurveZY)={threedimmapZ,0}
+				break
+				
 			endswitch
 			hookresult=1
-
+		break
 			
 		case 22: //mouse wheel event
 			if(s.wheelDy>0)
