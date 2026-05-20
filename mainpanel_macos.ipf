@@ -46,7 +46,7 @@ Window Mainpanel() : Panel
 	ModifyPanel cbRGB=(65535,65535,0)
 	PopupMenu popup0,pos={135.00,3.00},size={105.00,21.00},proc=PopMenuProc_datatype,title="Data type"
 	PopupMenu popup0,font="Times New Roman",fSize=16
-	PopupMenu popup0,mode=2,popvalue=".txt",value= #"\".txt;.pxt;.xy;.ibw;.itx;SSRL;DA30;MBStxt\""
+	PopupMenu popup0,mode=2,popvalue=".txt",value= #"\".txt;.pxt;.xy;.ibw;.itx;SSRL;ALBA;DA30;MBStxt\""
 	Button button0,pos={16.00,5.00},size={110.00,45.00},proc=ButtonProc_newdatapath,title="Data Path"
 	Button button0,font="Times New Roman",fSize=24,fColor=(0,65535,0)
 	ListBox list0,pos={18.00,54.00},size={195.00,220.00},font="Times New Roman"
@@ -76,7 +76,7 @@ Window Mainpanel() : Panel
 	Button button20 title="Slicecut", pos={220,200},size={80,30},font="Times New Roman",fSize=20,proc=ButtonProc_Slicecut
 	PopupMenu popup1,pos={10.00,385.00},size={80.00,21.00},bodyWidth=80,proc=PopMenuProc_newFuncs
 	PopupMenu popup1,font="Times New Roman",fSize=16
-	PopupMenu popup1,mode=1,popvalue=" ",value= #"\"curvature;minigr;FSjoint;simulation;realspacemap\""
+	PopupMenu popup1,mode=1,popvalue=" ",value= #"\"curvature;minigr;FSjoint;simulation;realspacemap;anglekcal;AstraiosSpin\""
 	TitleBox title0,pos={12.00,355.00},size={77.00,27.00},title="NewFuncs"
 	TitleBox title0,labelBack=(65535,65535,65535),font="Times New Roman",fSize=16,fStyle=1,anchor= MC
 	Button button21,pos={220.00,235.00},size={80.00,25.00},proc=ButtonProc_cuttranspose,title="Cuttranspose",font="Times New Roman",fSize=12
@@ -109,6 +109,8 @@ Function PopMenuProc_datatype(ctrlName,popNum,popStr) : PopupMenuControl
 		string/g datatype=".txt"
 	elseif(stringmatch(popStr,"SSRL")==1)
 		string/g datatype=".h5"
+	elseif(stringmatch(popStr,"ALBA")==1)
+		string/g datatype=".nxs"
 	else
 		String/g datatype=popStr
 	endif
@@ -321,7 +323,7 @@ Function ButtonProc_dataexport(ctrlName) : ButtonControl
 				return -1
 				else						
 					HDF5loaddata/O/Z/Q/N=count groupID, "Count"//load hdf5 data
-					HDF5loaddata/O/Z/Q/N=Time0 groupID, "Time"// this is the data normalization wave
+					HDF5loaddata/O/Z/Q/N=Time0 groupID, "Time"// this is the data normalization wave, may not exist
 					wave Time0
 					
 					HDF5loaddata/O/A="Offset"/type=1/N=temp/Z/Q groupID, "Axes0"
@@ -365,7 +367,10 @@ Function ButtonProc_dataexport(ctrlName) : ButtonControl
 					
 					duplicate/O count, $currentwavename
 					wave datawave=$currentwavename
-					datawave=datawave/Time0 //norm the data by Time wave in hdf5 file
+					if(waveexists(Time0)==1)
+						datawave=datawave/Time0 //norm the data by Time wave in hdf5 file
+					endif
+					energyoffwave[i]=xoffset
 				endif
 				
 				if(V_flag == 0)
@@ -376,8 +381,11 @@ Function ButtonProc_dataexport(ctrlName) : ButtonControl
 				HDF5CloseGroup groupID
 				// Close the HDF5 file
 				HDF5CloseFile fileID
-				
-				logtext="Load "+currentwavename+datatype+" from "+S_path+"\r" 
+				if(waveexists(Time0)==1)
+					logtext="Load "+currentwavename+datatype+" from "+S_path+", and norm by Time data\r"
+				else
+					logtext="Load "+currentwavename+datatype+" from "+S_path+"\r"
+				endif
 				if(wavedims(count)==3)
 					logtext+="the third dimension label is "+zdimlab+"\r"
 				elseif(wavedims(count)==4)
@@ -399,6 +407,77 @@ Function ButtonProc_dataexport(ctrlName) : ButtonControl
 		killwaves/Z temp, txttemp, count, Time0
 		killwindow Loadprogress
 		
+	endif
+	
+		
+	//load nxs (hdf5) file generated at BL LOREA of ALBA
+	if (stringmatch(datatype,".nxs")==1 && V_value==7)
+	make/O temp
+	make/O/T txttemp
+		for(i=0; i<index; i+=1)
+			if(dataselwave[i]!=0)
+				k+=1
+				currentwavename=removeending(datalistwave[i],datatype)
+				
+				//open HDF5 file
+				HDF5openfile/P=folderpath/R/Z fileID as datalistwave[i]
+				if (V_flag != 0)
+					Print "HDF5OpenFile failed"
+					return -1
+				endif
+					
+				HDF5OpenGroup /Z fileID, "entry1/data", groupID
+				if (V_flag != 0)
+					Print "HDF5OpenGroup failed"
+					HDF5CloseFile fileID
+					return -1
+				else						
+					HDF5loaddata/O/Z/Q/N=nxsdata groupID, "data"//load hdf5 data
+					HDF5loaddata/O/Z/Q/N=nxsenergies groupID, "energies"//load hdf5 energies
+					HDF5loaddata/O/Z/Q/N=nxsangles groupID, "angles"//load hdf5 angles
+					wave nxsenergies, nxsangles
+					yoffset=nxsenergies[0]
+					ydelta=nxsenergies[1]-nxsenergies[0]
+					xoffset=nxsangles[0]
+					xdelta=nxsangles[1]-nxsangles[0]
+					
+					setscale/P x, xoffset, xdelta, nxsdata
+					setscale/P y, yoffset, ydelta, nxsdata
+					if(wavedims(nxsdata)==3)
+					HDF5loaddata/O/Z/Q/N=nxsdeflangles groupID, "defl_angles"//load hdf5 deflector angles
+					wave nxsdeflangles
+					zoffset=nxsdeflangles[0]
+					zdelta=nxsdeflangles[1]-nxsdeflangles[0]
+					setscale/P x, zoffset, zdelta, nxsdata
+					setscale/P y, xoffset, xdelta, nxsdata
+					setscale/P z, yoffset, ydelta, nxsdata
+					
+					endif
+					duplicate/O nxsdata, $currentwavename
+					wave datawave=$currentwavename
+				endif
+				
+				// Close the HDF5 group
+				HDF5CloseGroup groupID
+				// Close the HDF5 file
+				HDF5CloseFile fileID
+				logtext="Load "+currentwavename+datatype+" from "+S_path+"\r"
+				
+				Notebook exp_logbook selection={endoffile, endoffile},fsize=12, text=logtext
+				ValDisplay output, value=_NUM:k,win=Loadprogress
+				doupdate/W=Loadprogress
+				if(V_flag == 2)  //User stop the output progress
+					i = index+1
+					print "User stop the data load progress!"
+				endif
+			endif
+		endfor
+	
+		logtext="----------The data load process end--------------\r\r"
+		Notebook exp_logbook selection={endoffile, endoffile},fsize=12, text=logtext
+		
+		killwaves nxsdata, nxsenergies, nxsangles
+		killwindow Loadprogress
 	endif
 	
 	if(stringmatch(datatype,".xy")==1)
@@ -1949,8 +2028,10 @@ Function ButtonProcAuEffit(ctrlName) : ButtonControl
 	CurveFit/Q/L=(size2) /X=1 poly 8, $auEFwave /D 
 	ModifyGraph lsize($"fit_"+auEFwave)=3
 	killwaves temp, fit_temp
+	wavestats/q auEf
+	TextBox/C/N=text0/F=0/A=MC "\\F'Arial'\\Z20\\f02E\\BF\\M\\Z20\\f00 = "+num2str(V_avg)+"eV"
 	
-	logtext="generate a polyAu Fermi level wave from "+NewImagename+" to fit_"+auEFwave+"\r\r"
+	logtext="generate a polyAu Fermi level wave from "+NewImagename+" to fit_"+auEFwave+", the Fermi level is "+num2str(V_avg)+" eV\r\r"
 	Notebook exp_logbook selection={endoffile, endoffile},fsize=12, text=logtext
 End
 
@@ -3477,6 +3558,9 @@ Window FSrotatPanel() : Panel
 	Button button5,font="Times New Roman",fSize=20
 	Button button6,pos={155.00,237.00},size={78.00,27.00},proc=ButtonProc_FSrotat_lineprofile,title="LineProfile"
 	Button button6,font="Times New Roman",fSize=14
+	Button button7,pos={280.00,205.00},size={50.00,30.00},proc=ButtonProc_FSrotat_cutline,title="cutline"
+	Button button7,font="Times New Roman",fSize=16
+
 
 	SetVariable setvar0,pos={100.00,15.00},size={90.00,22.00},proc=SetVarProc_FSenergy,title="E"
 	SetVariable setvar0,font="Times New Roman",fSize=16
@@ -4090,6 +4174,73 @@ Function FSlineprofileplot( )
 		Label bottom "\\F'Arial'\\Z24\\f02k\\By\\M\\Z24\\f00 (Å\\S-1\\M\\Z24)"
 	endif
 	Showinfo
+End
+
+Function ButtonProc_FSrotat_cutline(ctrlName) : ButtonControl
+	//only cut along angley (ky) can be realized now
+	String ctrlName
+	wave FSrotateMap, ShowFSmap
+	variable/g thetaangle, phiangle, psiangle, piangle, rotationangle
+	
+	string cutXY, outputstring
+	variable angle
+	prompt cutXY "Choose the cut directoin:" popup, "Y"
+	prompt angle "Enter the position of cut: (angle label in ShowFSmap window !)"
+	prompt outputstring "Please enter the name for line:"
+	doprompt "", cutXY, angle, outputstring
+	if(V_flag)
+		return -1
+	endif
+	if(waveexists(FSrotateMap)!=1 || waveexists(ShowFSmap)!=1)
+		Abort "Please first rotate the FS !"
+	endif
+	
+	variable sizex=dimsize(ShowFSMap,0)
+	variable sizey=dimsize(ShowFSMap,1)
+	
+	make/O/N=(sizex) thetax
+	make/O/N=(sizey) thetay
+	if(stringmatch(cutXY,"X"))	
+		thetay[]=angle
+		thetax[]=dimoffset(ShowFSmap,0)+p*dimdelta(ShowFSmap,0)
+	else
+		thetay[]=dimoffset(ShowFSmap,1)+p*dimdelta(ShowFSmap,1)
+		thetax[]=angle
+	endif
+	
+	thetax[]=thetax[p]+thetaangle
+	thetay[]=thetay[p]+phiangle-dimdelta(ShowFSMap,1)*(dimsize(ShowFSmap,1)-1)/2
+
+	variable size=dimsize(FSrotateMap,0)
+	make/O/N=(size) thetax1, thetay1, theta0
+	thetax1[]=thetax[0]+(wavemax(thetax)-wavemin(thetax))/(size-1)*p
+	thetay1[]=thetay[0]+(wavemax(thetay)-wavemin(thetay))/(size-1)*p
+	
+	if(stringmatch(cutXY,"X"))
+		theta0[]=-(wavemax(thetax)-wavemin(thetax))/2+(wavemax(thetax)-wavemin(thetax))/(size-1)*p
+	else
+		theta0[]=-(wavemax(thetay)-wavemin(thetay))/2+(wavemax(thetay)-wavemin(thetay))/(size-1)*p
+	endif
+	duplicate/O thetax1, kx1, kx
+	duplicate/O thetay1, ky1, ky
+	
+	variable Phi = -phiangle*(pi/180)
+	variable Psi = psiangle*(pi/180)
+	variable Theta = thetaangle*(pi/180)
+	
+		kx1[]=(cos(Psi)*sin(thetax1[p]/180*pi)+cos(Phi)*cos(thetax1[p]/180*pi)*sin(Psi))*cos(theta0[p]/180*pi)/sin(piangle/180*pi)+sin(Psi)*sin(Phi)*sin(theta0[p]/180*pi)/sin(piangle/180*pi)
+		ky1[]=-sin(Phi)*cos(thetax1[p]/180*pi)*cos(theta0[p]/180*pi)/sin(piangle/180*pi)+cos(Phi)*sin(theta0[p]/180*pi)/sin(piangle/180*pi)
+	
+	//rotate kx-ky line
+	kx[]=kx1[p]*cos(rotationangle*pi/180)-ky1[p]*sin(rotationangle*pi/180)
+	ky[]=kx1[p]*sin(rotationangle*pi/180)+ky1[p]*cos(rotationangle*pi/180)
+	duplicate/O kx, $outputstring+"_kx"
+	duplicate/O ky, $outputstring+"_ky"
+
+	//killwaves thetax, thetax1, thetay, thetay1, kx1, ky1, kx, ky
+	dowindow/f FSrotateMapping
+	AppendtoGraph $outputstring+"_ky" vs $outputstring+"_kx"
+	ModifyGraph lsize=2
 End
 
 Function SetVarProc_FSlineprofileoffset(ctrlName,varNum,varStr,varName) : SetVariableControl
@@ -8070,6 +8221,10 @@ Function PopMenuProc_newFuncs(ctrlName,popNum,popStr) : PopupMenuControl
 		newsimpanel()
 	elseif(stringmatch(popStr,"realspacemap")==1)
 		makerealspacemap()
+	elseif(stringmatch(popStr,"anglekcal")==1)
+		anglekcal()
+	elseif(stringmatch(popStr,"AstraiosSpin")==1)
+		execute "AstraiosSpin()"
 	endif
 End
 
@@ -8202,4 +8357,167 @@ Function FSmapjointplot()
 	Label/Z left "\\F'Arial'\\Z24\f00k\By\M\F'Arial'\\Z24 (Å\S-1\M\F'Arial'\\Z24)"
 	Label/Z bottom "\\F'Arial'\\Z24\f00k\Bx\M\F'Arial'\\Z24 (Å\S-1\M\F'Arial'\\Z24)"
    ModifyGraph margin(left)=70,margin(bottom)=56,margin(right)=28,margin(top)=28,width=269.291,height={Plan,1,left,bottom}
+End
+
+Function anglekcal()
+	variable hv, E_w, tilt, polar, angwidth
+	E_w = 4.5; angwidth=30
+	string BZwave
+	
+	prompt hv "Please enter the photon energy (eV):"
+	prompt E_w "Please enter the work function (eV):"
+	prompt tilt "Please enter the tilt angle w.r.t. the normal plane (degree):"
+	prompt polar "Please enter the polar angle w.r.t. the slit (degree):"
+	prompt angwidth "Please enter the angwidth of the slit (degree):"
+	prompt BZwave "Please select the Brillouin zone wave:" popup "none;"+wavelist("*",";","DIMS:2")
+	doprompt "", hv, E_w, tilt, polar, angwidth, BZwave
+	if(V_flag)
+		return -1
+	endif
+	
+	make/O/N=101 anglexcal, angleycal, kxcal, kycal, angle0
+	
+	anglexcal[]=polar
+	angleycal[]=tilt-angwidth/2+angwidth/100*p
+	angle0[]=-angwidth/2+angwidth/100*p
+	kxcal=0.512*sqrt(hv-E_w)*sin(anglexcal/180*pi)*cos(angle0/180*pi)
+	kycal=0.512*sqrt(hv-E_w)*(-sin(tilt/180*pi)*cos(polar/180*pi)*cos(angle0/180*pi)+cos(tilt/180*pi)*sin(angle0/180*pi))
+	
+	
+	Display;Delayupdate
+	Appendtograph kycal vs kxcal
+	if(stringmatch(BZwave,"none"))
+	else
+		Appendtograph $BZwave
+	endif
+	wavestats/q kxcal
+	variable v1=	V_avg
+	variable v2=V_max-V_min
+	wavestats/q kycal
+	variable v3=max(abs(V_max),abs(V_min))
+	killwaves angle0
+	anglekcal_plot(v1,v2,v3)
+End
+
+Function anglekcal_plot(v1, v2, v3)
+	variable v1, v2, v3
+	
+	ModifyGraph lsize=2
+	ModifyGraph/Z tick=2
+	ModifyGraph/Z mirror=1
+	ModifyGraph/Z font="Arial"
+	ModifyGraph/Z fSize=16
+	ModifyGraph/Z fStyle=1
+	ModifyGraph/Z standoff=0
+	ModifyGraph zero=4
+	ModifyGraph axThick=2
+	SetAxis bottom v1-5*v2, v1+5*v2
+	SetAxis left -v3*1.1, v3*1.1
+	Label/Z left "\\F'Arial'\\Z24\f00k\By\M\F'Arial'\\Z24 (Å\S-1\M\F'Arial'\\Z24)"
+	Label/Z bottom "\\F'Arial'\\Z24\f00k\Bx\M\F'Arial'\\Z24 (Å\S-1\M\F'Arial'\\Z24)"
+   ModifyGraph margin(left)=70,margin(bottom)=56,margin(right)=28,margin(top)=28,width=255.118
+End
+
+Window AstraiosSpin() : Panel
+	PauseUpdate; Silent 1		// building window...
+	NewPanel /W=(1041,271,1433,543)
+	Button button0,pos={7.00,4.00},size={79.00,34.00},proc=ButtonProc_SPECSSpinsum,title="SpinSum"
+	Button button0,font="Arial",fSize=14
+	
+EndMacro
+
+
+Function ButtonProc_SPECSSpinsum(ctrlName) : ButtonControl
+	String ctrlName
+	wave dataselwave
+	wave/T datalistwave
+	string/g datatype
+	variable waveindex, loopnum, profilenum=8, i, j, spinwavenum, spinwavesize, spinwaveoffset, spinwavedelta
+	variable Sherman= 0.33 //Sherman function for VLEED detector
+	string spingroupname, profiletype, spin
+	string spinwavelist="", spinwavelooplist="", templist=""
+	waveindex=dimsize(dataselwave,0)
+	for(i=0; i<waveindex; i+=1)
+		if(dataselwave[i]!=0)
+			spinwavelist+=removeending(datalistwave[i],datatype)+";"
+		endif
+	endfor
+	spinwavenum=itemsinlist(spinwavelist)
+	//print spinwavelist
+	Prompt spingroupname "You have selected "+num2str(spinwavenum)+" waves in the list to sumup spin.\nPlease Enter the name of spin group:"
+	Prompt profilenum "Please Enter profiles in each loop:"
+	Prompt profiletype "Please choose the profile type:" popup "+--+;-++-;"
+	Prompt loopnum "Please Enter the number of loops:"
+	doprompt "", spingroupname, profilenum, profiletype, loopnum
+	if(V_flag)
+		return -1 
+	endif
+	
+	if(mod(spinwavenum,loopnum*profilenum) != 0)
+		Abort "Number of loops, profiles or waves is wrong ! Please retry."
+	endif
+	
+	spinwavesize=dimsize($stringfromlist(0,spinwavelist),0)
+	spinwaveoffset=dimoffset($stringfromlist(0,spinwavelist),0)
+	spinwavedelta=dimdelta($stringfromlist(0,spinwavelist),0)
+	make/O/N=(spinwavesize) temp
+	temp[]=0
+	SetScale /P x, spinwaveoffset, spinwavedelta, temp
+	
+	for(i=1; i<=loopnum; i+=1)
+		duplicate/O temp, $spingroupname+"_l"+num2str(i)+"Spinup"
+		wave spinup=$spingroupname+"_l"+num2str(i)+"Spinup"
+		duplicate/O temp, $spingroupname+"_l"+num2str(i)+"Spindown"
+		wave spindown=$spingroupname+"_l"+num2str(i)+"Spindown"
+		duplicate/O temp, $spingroupname+"_l"+num2str(i)+"Spinpol"
+		wave spinpol=$spingroupname+"_l"+num2str(i)+"Spinpol"
+		
+		for(j=0; j< profilenum; j+=1)
+		 	duplicate/O $stringfromlist((i-1)*profilenum+j, spinwavelist), $"looptemp"+num2str(j)
+		endfor
+		wave looptemp0, looptemp1, looptemp2, looptemp3, looptemp4, looptemp5, looptemp6, looptemp7
+		if(stringmatch(profiletype,"+--+"))
+			spinup=looptemp0+looptemp3+looptemp4+looptemp7
+			spindown=looptemp1+looptemp2+looptemp5+looptemp6
+		elseif(stringmatch(profiletype,"-++-"))
+			spindown=looptemp0+looptemp3+looptemp4+looptemp7
+			spinup=looptemp1+looptemp2+looptemp5+looptemp6
+		endif
+		
+		spinwavelooplist=""
+		spinpol=1/Sherman*(spinup-spindown)/(spinup+spindown)
+	endfor
+	
+	duplicate/O temp, $spingroupname+"Spinup", $spingroupname+"Spindown", $spingroupname+"Spinpol"
+	wave spinsumup=$spingroupname+"Spinup"
+	wave spinsumdown=$spingroupname+"Spindown"
+	wave spinsumpol=$spingroupname+"Spinpol"
+	for(i=1; i<=loopnum; i+=1)
+		wave spinup=$spingroupname+"_l"+num2str(i)+"Spinup"
+		spinsumup+=spinup
+		wave spindown=$spingroupname+"_l"+num2str(i)+"Spindown"
+		spinsumdown+=spindown
+	endfor
+	spinsumpol=1/Sherman*(spinsumup-spinsumdown)/(spinsumup+spinsumdown)
+	
+	
+	killwaves temp, looptemp0, looptemp1, looptemp2, looptemp3, looptemp4, looptemp5, looptemp6, looptemp7
+	Display spinsumup, spinsumdown
+	AppendtoGraph/L=leftnew spinsumpol
+	Spinplot()
+End
+
+Function Spinplot()
+	ModifyGraph lsize=2
+	ModifyGraph/Z rgb[0]=(65535,0,0),rgb[1]=(0,0,65535),rgb[2]=(2,39321,1)
+	ModifyGraph/Z mode[2]=4,marker[2]=8,msize[2]=3,mrkThick[2]=1
+	ModifyGraph axisEnab(left)={0,0.63},axisEnab(leftnew)={0.65,1}
+	Label left "\\F'Arial'\\Z20 Intensity";DelayUpdate
+	Label bottom "\\F'Arial'\\Z20 Energy (eV)";DelayUpdate
+	Label leftnew "\\F'Arial'\\Z20 Spin pol";DelayUpdate
+	SetAxis leftnew -0.5,0.5
+	ModifyGraph standoff(bottom)=0
+	ModifyGraph freePos(leftnew)={0,kwFraction}
+	ModifyGraph zero(leftnew)=4,zeroThick(leftnew)=2
+	ModifyGraph tick=2,mirror=1,fSize=14,axThick=2,font="Arial"
 End
