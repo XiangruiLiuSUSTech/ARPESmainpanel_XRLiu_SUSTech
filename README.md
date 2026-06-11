@@ -25,3 +25,6 @@ a video maybe helpful for you to use mainpanel: https://www.bilibili.com/video/B
 
 mainpanel_macos: almost the same as mainpanel, new functions updated here (the author moves to macOS system in 2025)
 
+realspacemap: visualization the real space mapping data (work for both arrays of 2D E-k cuts and 4D data sets)
+
+SPECSSpinpanel: load, process and visualization for itx format spin-resolved ARPES data exported from SPECS Prodigy, Astraios 190 and 3D-VLEED analyzer.
