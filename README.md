@@ -21,3 +21,7 @@ twodimcolorplot: plot the two-dimensional polarized data (especially for CD-ARPE
 Mainpanel使用简易教程： a short manual for new users (Chinese edition);
 
 a video maybe helpful for you to use mainpanel: https://www.bilibili.com/video/BV1Bv411P7KB/
+
+
+mainpanel_macos: almost the same as mainpanel, new functions updated here (the author moves to macOS system in 2025)
+
