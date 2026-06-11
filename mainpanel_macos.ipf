@@ -21,9 +21,12 @@
 //                      Add the data load function for DA30 analyzer (bin file) and read the related information from "viewer.ini" file.
 //Update by 2023-03-30: Add the data load function for txt format files from MBS-A1 analyzer and read the related information.
 //							 Add polyAu normalization method and AreaSpectra method in NewMapwindow.
-//Update by 2023-07-28: Add the kxky map rotation and kz map rotation in NewMapwindow. 
+//Update by 2023-07-28: Add the kxky map rotation and kz map rotation in NewMapwindow (only rough estimation). 
 //Update by 2025-06-12: Add the data load function for itx format (data exported from SPECS Prodigy).
 //Update by 2025-08-28: Add the data load function for hdf5 (.h5) format generated at SSRL.
+//Update by 2026-05-10: Add the data load function for .nxs (also a hdf5) format generated at LOREA of ALBA.
+//Update by 2026-06-05: Add the data transpose function for itx format data exported from SPECS Prodigy.
+//Update by 2026-06-11: Add the 3D FS rotation function for laser ARPES (consider variation of EK/EB within a single map)
 
 Menu "Extended Procedures"
 	"Mainpanel/1", Mainpanel()
@@ -575,7 +578,7 @@ Function ButtonProc_dataexport(ctrlName) : ButtonControl
 		killwindow Loadprogress
 	endif
 	
-		if(stringmatch(datatype,".itx")==1)
+	if(stringmatch(datatype,".itx")==1)
 		for(i=0; i<index; i+=1)
 			if(dataselwave[i]!=0)
 				k+=1
@@ -587,7 +590,22 @@ Function ButtonProc_dataexport(ctrlName) : ButtonControl
 				string itxloadstr="root:itxload"
 				killdatafolder/Z $itxloadstr			
 				energyoffwave[i]=dimoffset($currentwavename,0)
-				logtext="Load "+currentwavename+datatype+" from "+S_path+"\r" 
+				logtext="Load "+currentwavename+datatype+" from "+S_path+"\r"
+				
+				////Add this module to set energy axis to dim0, angle axis to dim1, as convention .pxt and .txt format data.
+				string itxrowunit=waveunits($currentwavename,1)
+				if(wavedims($currentwavename)==2 && stringmatch(itxrowunit,"*energy*"))
+					wave itxrawwave=$currentwavename
+					make/O/N=(dimsize($currentwavename,1),dimsize($currentwavename,0)), itxloadtemp
+					itxloadtemp[][]=itxrawwave[q][p]
+					SetScale /P x, dimoffset($currentwavename,1), dimdelta($currentwavename,1), waveunits($currentwavename,1) itxloadtemp
+					SetScale /P y, dimoffset($currentwavename,0), dimdelta($currentwavename,0), waveunits($currentwavename,0) itxloadtemp
+					duplicate/O itxloadtemp, $currentwavename
+					energyoffwave[i]=dimoffset($currentwavename,0)
+					logtext+="Reverse energy and angle axis of "+currentwavename+datatype+"\r"
+					killwaves/Z itxloadtemp
+				endif
+				
 				Notebook exp_logbook selection={endoffile, endoffile},fsize=12, text=logtext
 				ValDisplay output, value=_NUM:k,win=Loadprogress
 				doupdate/W=Loadprogress
@@ -596,7 +614,8 @@ Function ButtonProc_dataexport(ctrlName) : ButtonControl
 					print "User stop the data load progress!"
 				endif
 			endif
-		endfor
+			endfor
+
 		logtext="----------The data load process end--------------\r\r"
 		Notebook exp_logbook selection={endoffile, endoffile},fsize=12, text=logtext
 		killwindow Loadprogress
@@ -3440,16 +3459,22 @@ End
 
 Function ButtonProc3DMapNewGraph(ctrlName) : ButtonControl
 	String ctrlName
-	String graphwave
+	String graphwave, logtext, newwavename
 	wave NewMapcolortab
 	variable/g mapcolorcheck
+	variable/g threedimmapX, threedimmapY, threedimmapZ
 	string/g cubicmapname
+	newwavename=cubicmapname+"_"
 	prompt graphwave "Please choose the wave to plot new graph:" popup, "currentxwave;currentywave;currentzwave;zintensity"
-	doprompt "", graphwave
+	prompt newwavename "Please enter the name for export wave:"
+	doprompt "", graphwave, newwavename
+	if(V_flag)
+		return -1
+	endif
 
 	if(stringmatch(graphwave,"zintensity")==1)
-		duplicate/O $graphwave, $cubicmapname+graphwave
-		Display $cubicmapname+graphwave
+		duplicate/O $graphwave, $newwavename
+		Display $newwavename
 		PauseUpdate; Silent 1		// modifying window...
 		ModifyGraph/Z lsize=2
 		ModifyGraph noLabel(left)=1
@@ -3458,10 +3483,13 @@ Function ButtonProc3DMapNewGraph(ctrlName) : ButtonControl
 		Label/Z bottom "\\F'Arial'\\Z24\f02E-E\BF\M\F'Arial'\\Z24\f00 (eV)"
   	 	ModifyGraph margin(left)=56,margin(bottom)=56,margin(right)=28,margin(top)=28,width=340.157,height=255.118 
    		TextBox/C/N=text0/B=1/F=0/A=MC "\\F'Arial'\\Z24zintensity"
+   		
+   	logtext="export the zintensity wave of "+cubicmapname+" wave at X = "+num2str(threedimmapX)+" and Y = "+num2str(threedimmapY)+" to "+newwavename+" \r"	
+		Notebook exp_logbook selection={endoffile, endoffile},fsize=12, text=logtext
 	elseif(stringmatch(graphwave,"currentzwave")==1)
 		Display;DelayUpdate
-		duplicate/O $graphwave, $cubicmapname+graphwave
-		AppendImage $cubicmapname+graphwave
+		duplicate/O $graphwave, $newwavename
+		AppendImage $newwavename
 		exportgraphplot()
 		ModifyGraph zero=4
 		Label/Z left "\\F'Arial'\\Z24\f00k\By\M\F'Arial'\\Z24"
@@ -3474,10 +3502,13 @@ Function ButtonProc3DMapNewGraph(ctrlName) : ButtonControl
 			 PauseUpdate; Silent 1		// modifying window...
    			 ModifyImage/Z [0] ctab= {*,*,NewMapcolortab ,0}
 		endif
+		
+		logtext="export the X-Y cut of "+cubicmapname+" wave at Z = "+num2str(threedimmapZ)+" to "+newwavename+" \r"	
+		Notebook exp_logbook selection={endoffile, endoffile},fsize=12, text=logtext
 	elseif(stringmatch(graphwave,"currentxwave")==1)
 		Display;DelayUpdate
-		duplicate/O $graphwave, $cubicmapname+graphwave
-		AppendImage $cubicmapname+graphwave
+		duplicate/O $graphwave, $newwavename
+		AppendImage $newwavename
 		exportgraphplot()
 		ModifyGraph zero=4
 		Label/Z left "\\F'Arial'\\Z24\f02E-E\BF\M\F'Arial'\\Z24\f00 (eV)"
@@ -3490,10 +3521,12 @@ Function ButtonProc3DMapNewGraph(ctrlName) : ButtonControl
 			 PauseUpdate; Silent 1		// modifying window...
    			 ModifyImage/Z [0] ctab= {*,*,NewMapcolortab ,0}
 		endif	
+		logtext="export the X-Z cut of "+cubicmapname+" wave at Y = "+num2str(threedimmapY)+" to "+newwavename+" \r"	
+		Notebook exp_logbook selection={endoffile, endoffile},fsize=12, text=logtext
 	elseif(stringmatch(graphwave,"currentywave")==1)
 		Display;DelayUpdate
-		duplicate/O $graphwave, $cubicmapname+graphwave
-		AppendImage $cubicmapname+graphwave
+		duplicate/O $graphwave, $newwavename
+		AppendImage $newwavename
 		ModifyGraph/Z swapXY=1
 		exportgraphplot()
 		ModifyGraph zero=4
@@ -3506,8 +3539,11 @@ Function ButtonProc3DMapNewGraph(ctrlName) : ButtonControl
 		else
 			 PauseUpdate; Silent 1		// modifying window...
    			 ModifyImage/Z [0] ctab= {*,*,NewMapcolortab ,0}
-		endif	
+		endif
+		logtext="export the Y-Z cut of "+cubicmapname+" wave at X = "+num2str(threedimmapX)+" to "+newwavename+" \r"	
+		Notebook exp_logbook selection={endoffile, endoffile},fsize=12, text=logtext
 	endif
+	
 End
 
 
@@ -3556,10 +3592,12 @@ Window FSrotatPanel() : Panel
 	Button button4,font="Times New Roman",fSize=20
 	Button button5,pos={250.00,145.00},size={70.00,30.00},proc=ButtonProc_FSexport,title="Export"
 	Button button5,font="Times New Roman",fSize=20
-	Button button6,pos={155.00,237.00},size={78.00,27.00},proc=ButtonProc_FSrotat_lineprofile,title="LineProfile"
+	Button button6,pos={268.00,239.00},size={75.00,27.00},proc=ButtonProc_FSrotat_lineprofile,title="LineProfile"
 	Button button6,font="Times New Roman",fSize=14
 	Button button7,pos={280.00,205.00},size={50.00,30.00},proc=ButtonProc_FSrotat_cutline,title="cutline"
 	Button button7,font="Times New Roman",fSize=16
+	Button button8,pos={155.00,238.00},size={112.00,28.00},proc=ButtonProc_3DMapRotation_laser,title="Laser Rotation"
+	Button button8,fSize=16
 
 
 	SetVariable setvar0,pos={100.00,15.00},size={90.00,22.00},proc=SetVarProc_FSenergy,title="E"
@@ -3610,7 +3648,7 @@ Window FSrotatPanel() : Panel
 	
 	SetVariable setvar14,pos={260.00,120.00},size={85.00,22.00},title="MaxK"
 	SetVariable setvar14,font="Times New Roman",fSize=16
-	SetVariable setvar14,limits={1,4,1},value= _NUM:2,proc=SetVarProc_FSMaxK
+	SetVariable setvar14,limits={1,10,1},value= _NUM:2,proc=SetVarProc_FSMaxK
 	CheckBox check1,pos={10.00,250.00},size={46.00,19.00},proc=CheckProc_FSrotapicheck,title="a=π?"
 	CheckBox check1,font="Times New Roman",fSize=16,value= 0,side= 1
 	
@@ -3927,7 +3965,7 @@ Function ButtonProc_FSexport(ctrlName) : ButtonControl
 		
 		Display;Delayupdate 
   		AppendImage $newFSname 
-  		ModifyGraph margin(left)=75,margin(bottom)=75,margin(right)=28,margin(top)=28,width=340.157,height={Aspect,1}
+  		ModifyGraph margin(left)=75,margin(bottom)=75,margin(right)=28,margin(top)=28,width=340.157,height={Plan,1,left,bottom}
 		ModifyGraph mirror=1,fStyle=1,fSize=16,font="Arial"
 		ModifyGraph standoff=0, tick=2, zero=4,zeroThick=2
 		ModifyGraph axThick=2
@@ -4030,7 +4068,7 @@ Function Buttonproc_3DMapRotation (ctrlName) : ButtonControl
 	midY= firstY+dY*(sizeY-1)/2
 	//duplicate/o cubicmapint temp1
 	
-	make/o/n=(meshsize*100,meshsize*100,sizeZ) cubicmap_rot
+	make/o/n=(meshsize*100+1,meshsize*100+1,sizeZ) cubicmap_rot
 	setscale/I x, -MaxK, MaxK, "" cubicmap_rot
 	setscale/I y, -MaxK, MaxK, "" cubicmap_rot
 	setscale/P z, firstZ, dZ, "" cubicmap_rot
@@ -4089,7 +4127,132 @@ Function Buttonproc_3DMapRotation (ctrlName) : ButtonControl
 	duplicate/O cubicmap_rot, $FSnewname
 	logtext="Rotate the 3D map "+FSmapname+" to wave "+FSnewname+", with piangle = "+num2str(piangle)+"\r"
 	Notebook exp_logbook selection={endoffile, endoffile},fsize=12, text=logtext
+	
+	killwaves cubicmap_rot
 End
+
+Function ButtonProc_3DMapRotation_laser(ctrlName) : ButtonControl
+	String ctrlName
+	variable sizeX, sizeY, sizeZ, dX, dY, dZ, firstX, firstY, firstZ, midY, zoff, deltaz
+	variable/g thetaangle, phiangle, rotationangle, psiangle, meshsize, FSInterpX, FSInterpY, Xanglestep, Yanglestep
+	variable/g MaxK
+	variable Psi, Phi, Theta, rotation, i, j, k, Fermienergy
+	variable termX1,termX2,termX3,termY1,termY2,termY3,termZ1,termZ2,termZ3
+	string logtext
+	string/g FSmapname
+	wave cubicmap
+	String funccheck, FSnewname="newFSrot"
+	prompt funccheck "Do you want to execute the 3D Map rotation from the laser source? This would be time-consuming!" popup, "No;Yes"
+	prompt Fermienergy "Enter the Fermi energy of the 3D Map:"
+	prompt FSnewname "Enter the name for 3D FSrotation Map:"
+	doprompt "", funccheck, FSnewname, Fermienergy
+	if(stringmatch(funccheck,"No")==1)
+		Abort "User cancel the procedure."
+	endif
+	if(V_flag)
+		return -1
+	endif
+	zoff=dimoffset(cubicmap,2)
+	deltaz=dimdelta(cubicmap,2)
+	ImageInterpolate/F={FSInterpX,FSInterpY}/DEST=cubicmapint bilinear, cubicmap
+	setscale/P z zoff, deltaz, "" cubicmapint
+	setscale/P x 0, Xanglestep/FSInterpX, "" cubicmapint
+	setscale/P y 0, Yanglestep/FSInterpY, "" cubicmapint
+	//Adjust the size of output map
+	make/o/n=(meshsize*100+1,meshsize*100+1) temp
+	temp[][]=0
+	setscale/I x, -MaxK, MaxK, "" temp
+	setscale/I y, -MaxK, MaxK, "" temp
+	
+	//Map angle read
+	sizeX=dimsize(cubicmapint,0)
+	sizeY=dimsize(cubicmapint,1)
+	sizeZ=dimsize(cubicmapint,2)
+	dX=dimdelta(cubicmapint,0)
+	dY=dimdelta(cubicmapint,1)
+	dZ=dimdelta(cubicmapint,2)
+	firstX=dimoffset(cubicmapint,0)
+	firstY=dimoffset(cubicmapint,1)
+	firstZ=dimoffset(cubicmapint,2)
+	midY= firstY+dY*(sizeY-1)/2
+	
+	make/o/n=(meshsize*100+1,meshsize*100+1,sizeZ) cubicmap_rot
+	setscale/I x, -MaxK, MaxK, "" cubicmap_rot
+	setscale/I y, -MaxK, MaxK, "" cubicmap_rot
+	setscale/P z, firstZ, dZ, "" cubicmap_rot
+	// Unit change to kx and ky
+	make/o/n=(sizeY) Ywave,Zwave,x2wave,y2wave,temp2
+	setscale/I x, -midY, midY, "" Ywave,Zwave
+	//Ywave[] = sin(pnt2x(Ywave,p)*pi/180) / sin(piangle*pi/180)
+	//Zwave[] = cos(pnt2x(Zwave,p)*pi/180) / sin(piangle*pi/180)
+	Psi = psiangle*(pi/180)
+	Phi = -phiangle*(pi/180)
+	
+	//Rotation progress panel
+	NewPanel/N=threedimRotationprogress/w=(285,111,739,193)
+   ValDisplay energydim, pos={18,32}, size={342,18}, limits={0,sizeZ-1,0},barmisc={0,0}
+   ValDisplay energydim, value=_NUM:0, highcolor=(0,65535,0), mode=3
+   Button Stop, pos={375,32},size={50,20},title="Stop"
+   DoUpdate/W=threedimRotationprogress/E=1
+  
+	for(k=0; k<sizeZ; k+=1)
+	variable currentenergy=Fermienergy+zoff+deltaz*k
+	Variable h_bar=1.0545*10^-34, m=9.11*10^-31, eV=1.6*10^-19, aa=3.14159*10^-10
+	//assume lattice constant a = 3.14159 Å, the dimension of calculated momentum is 1/Å;
+	variable piangle=asin(h_bar*(pi/(aa))/(2*m*currentenergy*100*eV)^0.5)*180/pi
+	//to avoid ill-defined piangle for laser ARPES, the kinetic energy is rescale by 100, then rescale calculated momentum by 1/10;
+	
+		Ywave[] = sin(pnt2x(Ywave,p)*pi/180) / sin(piangle*pi/180)
+		Zwave[] = cos(pnt2x(Zwave,p)*pi/180) / sin(piangle*pi/180)
+	for (i=0 ; i< sizeX; i+=1)
+	temp2[] = cubicmapint[i][p][k]
+ 	Theta= (DimOffset(cubicmapint,0)+dx*i+thetaangle) *(pi/180)
+ 	 
+   termX1=cos(Psi)*cos(Theta)-cos(Phi)*sin(Theta)*sin(Psi)
+	termX2=cos(Psi)*sin(Theta)+cos(Phi)*cos(Theta)*sin(Psi)
+	termX3=sin(Psi)*sin(Phi)
+	
+   termY1=-sin(Psi)*cos(Theta)-cos(Phi)*sin(Theta)*cos(Psi)
+	termY2=-sin(Psi)*sin(Theta)+cos(Phi)*cos(Theta)*cos(Psi)
+	termY3=cos(Psi)*sin(Phi)	
+	
+	termZ1=sin(Phi)*sin(Theta)
+	termZ2=-sin(Phi)*cos(Theta)
+	termZ3=cos(Phi)
+	x2wave[] = termX2*Zwave[p]+termX3*Ywave[p]
+	y2wave[] = termZ2*Zwave[p]+termZ3*Ywave[p]
+		for (j=0 ; j<sizeY ; j+=1) 
+			temp[x2pnt(temp,x2wave[j])][x2pnt(temp,y2wave[j])] = temp2[j]
+		endfor
+	endfor
+	multithread cubicmap_rot[][][k]=temp[p][q]
+		if(rotationangle != 0)
+		rotation = rotationangle*pi/180
+		multithread cubicmap_rot[][][k]=temp(Indextoscale(cubicmap_rot,p,0)*cos(rotation)+Indextoscale(temp,q,1)*sin(rotation))(-Indextoscale(temp,p,0)*sin(rotation)+Indextoscale(temp,q,1)*cos(rotation))(indextoscale(temp,k,2))
+	endif
+	 ValDisplay energydim, value=_NUM:k,win=threedimRotationprogress
+	 doupdate/W=threedimRotationprogress
+		if(V_flag == 2)  //User stop the output progress
+			k = sizeZ+1
+			print "User stop the Map rotation progress!"
+		endif
+	endfor
+	
+	killwindow threedimRotationprogress	
+	killwaves temp, temp2,Ywave,Zwave,x2wave,y2wave
+	//rescale the momentum back
+	setscale/I x, -MaxK/10, MaxK/10, "" cubicmap_rot
+	setscale/I y, -MaxK/10, MaxK/10, "" cubicmap_rot
+	duplicate/O cubicmap_rot, $FSnewname
+
+	logtext="Rotate the 3D laser map "+FSmapname+" to wave "+FSnewname+", with Fermi energy ="+num2str(Fermienergy)+" eV, the dimension of in-plane momentum is 1/Å\r"
+	logtext+="The kinetic energy is rescale by factor 100, and momentum rescale by 1/10 after rotation\r"
+	Notebook exp_logbook selection={endoffile, endoffile},fsize=12, text=logtext
+	killwaves cubicmap_rot
+End
+
+
+
 
 Function ButtonProc_FSrotat_lineprofile(ctrlName) : ButtonControl
 	String ctrlName
@@ -8369,7 +8532,7 @@ Function anglekcal()
 	prompt tilt "Please enter the tilt angle w.r.t. the normal plane (degree):"
 	prompt polar "Please enter the polar angle w.r.t. the slit (degree):"
 	prompt angwidth "Please enter the angwidth of the slit (degree):"
-	prompt BZwave "Please select the Brillouin zone wave:" popup "none;"+wavelist("*",";","DIMS:2")
+	prompt BZwave "Please select the Brillouin zone wave:" popup "none;"+wavelist("!*color*",";","DIMS:2")
 	doprompt "", hv, E_w, tilt, polar, angwidth, BZwave
 	if(V_flag)
 		return -1
@@ -8388,7 +8551,7 @@ Function anglekcal()
 	Appendtograph kycal vs kxcal
 	if(stringmatch(BZwave,"none"))
 	else
-		Appendtograph $BZwave
+		Appendtograph $BZwave[][1] vs $BZwave[][0] 
 	endif
 	wavestats/q kxcal
 	variable v1=	V_avg
@@ -8397,6 +8560,8 @@ Function anglekcal()
 	variable v3=max(abs(V_max),abs(V_min))
 	killwaves angle0
 	anglekcal_plot(v1,v2,v3)
+	
+	printf "Calculate the momentum line in k-space for hv = %g eV, work function = %g eV, tilt angle = %g deg, polar angle =%g deg;\r"  hv, E_w, tilt, polar
 End
 
 Function anglekcal_plot(v1, v2, v3)
@@ -8418,106 +8583,3 @@ Function anglekcal_plot(v1, v2, v3)
    ModifyGraph margin(left)=70,margin(bottom)=56,margin(right)=28,margin(top)=28,width=255.118
 End
 
-Window AstraiosSpin() : Panel
-	PauseUpdate; Silent 1		// building window...
-	NewPanel /W=(1041,271,1433,543)
-	Button button0,pos={7.00,4.00},size={79.00,34.00},proc=ButtonProc_SPECSSpinsum,title="SpinSum"
-	Button button0,font="Arial",fSize=14
-	
-EndMacro
-
-
-Function ButtonProc_SPECSSpinsum(ctrlName) : ButtonControl
-	String ctrlName
-	wave dataselwave
-	wave/T datalistwave
-	string/g datatype
-	variable waveindex, loopnum, profilenum=8, i, j, spinwavenum, spinwavesize, spinwaveoffset, spinwavedelta
-	variable Sherman= 0.33 //Sherman function for VLEED detector
-	string spingroupname, profiletype, spin
-	string spinwavelist="", spinwavelooplist="", templist=""
-	waveindex=dimsize(dataselwave,0)
-	for(i=0; i<waveindex; i+=1)
-		if(dataselwave[i]!=0)
-			spinwavelist+=removeending(datalistwave[i],datatype)+";"
-		endif
-	endfor
-	spinwavenum=itemsinlist(spinwavelist)
-	//print spinwavelist
-	Prompt spingroupname "You have selected "+num2str(spinwavenum)+" waves in the list to sumup spin.\nPlease Enter the name of spin group:"
-	Prompt profilenum "Please Enter profiles in each loop:"
-	Prompt profiletype "Please choose the profile type:" popup "+--+;-++-;"
-	Prompt loopnum "Please Enter the number of loops:"
-	doprompt "", spingroupname, profilenum, profiletype, loopnum
-	if(V_flag)
-		return -1 
-	endif
-	
-	if(mod(spinwavenum,loopnum*profilenum) != 0)
-		Abort "Number of loops, profiles or waves is wrong ! Please retry."
-	endif
-	
-	spinwavesize=dimsize($stringfromlist(0,spinwavelist),0)
-	spinwaveoffset=dimoffset($stringfromlist(0,spinwavelist),0)
-	spinwavedelta=dimdelta($stringfromlist(0,spinwavelist),0)
-	make/O/N=(spinwavesize) temp
-	temp[]=0
-	SetScale /P x, spinwaveoffset, spinwavedelta, temp
-	
-	for(i=1; i<=loopnum; i+=1)
-		duplicate/O temp, $spingroupname+"_l"+num2str(i)+"Spinup"
-		wave spinup=$spingroupname+"_l"+num2str(i)+"Spinup"
-		duplicate/O temp, $spingroupname+"_l"+num2str(i)+"Spindown"
-		wave spindown=$spingroupname+"_l"+num2str(i)+"Spindown"
-		duplicate/O temp, $spingroupname+"_l"+num2str(i)+"Spinpol"
-		wave spinpol=$spingroupname+"_l"+num2str(i)+"Spinpol"
-		
-		for(j=0; j< profilenum; j+=1)
-		 	duplicate/O $stringfromlist((i-1)*profilenum+j, spinwavelist), $"looptemp"+num2str(j)
-		endfor
-		wave looptemp0, looptemp1, looptemp2, looptemp3, looptemp4, looptemp5, looptemp6, looptemp7
-		if(stringmatch(profiletype,"+--+"))
-			spinup=looptemp0+looptemp3+looptemp4+looptemp7
-			spindown=looptemp1+looptemp2+looptemp5+looptemp6
-		elseif(stringmatch(profiletype,"-++-"))
-			spindown=looptemp0+looptemp3+looptemp4+looptemp7
-			spinup=looptemp1+looptemp2+looptemp5+looptemp6
-		endif
-		
-		spinwavelooplist=""
-		spinpol=1/Sherman*(spinup-spindown)/(spinup+spindown)
-	endfor
-	
-	duplicate/O temp, $spingroupname+"Spinup", $spingroupname+"Spindown", $spingroupname+"Spinpol"
-	wave spinsumup=$spingroupname+"Spinup"
-	wave spinsumdown=$spingroupname+"Spindown"
-	wave spinsumpol=$spingroupname+"Spinpol"
-	for(i=1; i<=loopnum; i+=1)
-		wave spinup=$spingroupname+"_l"+num2str(i)+"Spinup"
-		spinsumup+=spinup
-		wave spindown=$spingroupname+"_l"+num2str(i)+"Spindown"
-		spinsumdown+=spindown
-	endfor
-	spinsumpol=1/Sherman*(spinsumup-spinsumdown)/(spinsumup+spinsumdown)
-	
-	
-	killwaves temp, looptemp0, looptemp1, looptemp2, looptemp3, looptemp4, looptemp5, looptemp6, looptemp7
-	Display spinsumup, spinsumdown
-	AppendtoGraph/L=leftnew spinsumpol
-	Spinplot()
-End
-
-Function Spinplot()
-	ModifyGraph lsize=2
-	ModifyGraph/Z rgb[0]=(65535,0,0),rgb[1]=(0,0,65535),rgb[2]=(2,39321,1)
-	ModifyGraph/Z mode[2]=4,marker[2]=8,msize[2]=3,mrkThick[2]=1
-	ModifyGraph axisEnab(left)={0,0.63},axisEnab(leftnew)={0.65,1}
-	Label left "\\F'Arial'\\Z20 Intensity";DelayUpdate
-	Label bottom "\\F'Arial'\\Z20 Energy (eV)";DelayUpdate
-	Label leftnew "\\F'Arial'\\Z20 Spin pol";DelayUpdate
-	SetAxis leftnew -0.5,0.5
-	ModifyGraph standoff(bottom)=0
-	ModifyGraph freePos(leftnew)={0,kwFraction}
-	ModifyGraph zero(leftnew)=4,zeroThick(leftnew)=2
-	ModifyGraph tick=2,mirror=1,fSize=14,axThick=2,font="Arial"
-End
