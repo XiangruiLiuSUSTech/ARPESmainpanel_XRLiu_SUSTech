@@ -1,6 +1,6 @@
 #pragma TextEncoding = "UTF-8"
 #pragma rtGlobals=3		// Use modern global access method and strict wave access.
-//This panel works for load and process the spin-resolved itx data exported from SPECS Prodigy, Astraios 190 analyzer and 3D VLEED detector.
+//This panel works for load and process the spin-resolved itx data exported from SPECS Prodigy v4.130.1, Astraios 190 analyzer and 3D VLEED detector.
 //Xiangrui Liu, 2026-06-11. xrliu1998@sjtu.edu.cn
 //For latest updates, related information and other related (maybe useful) procedures, please go to the Github link below.
 //https://github.com/XiangruiLiuSUSTech/ARPESmainpanel_XRLiu_SUSTech
@@ -20,6 +20,7 @@ Window AstraiosSpin() : Panel
 	Button button2,font="Times New Roman",fSize=16
 	Button button3,pos={16.00,272.00},size={55.00,27.00},proc=ButtonProc_Spinload,title="Load"
 	Button button3,font="Times New Roman",fSize=16
+	Button button3 help={"Only loads one dimensional itx format spin data exported from SPECS Prodigy v4.130.1"}
 	Button button4,pos={95.00,305.00},size={65.00,30.00},proc=ButtonProc_spinrawdata,title="rawdata"
 	Button button4,font="Times New Roman",fSize=16
 	Button button5,pos={165.00,305.00},size={60.00,30.00},proc=ButtonProc_Spinstatistics,title="Statistics"
@@ -30,7 +31,7 @@ Window AstraiosSpin() : Panel
 	ListBox list0,selWave=root:spindataselwave,mode= 9
 	PopupMenu popup0,pos={75.00,275.00},size={142.00,23.00},bodyWidth=100,title="dataset",proc=PopMenuProc_spindatasetchoose
 	PopupMenu popup0,font="Times New Roman",fSize=14
-	PopupMenu popup0,mode=1,popvalue="BSMDC-l10",value= #"root:spindataset"
+	PopupMenu popup0,mode=1,popvalue="root",value= #"root:spindataset"
 
 EndMacro
 
@@ -235,7 +236,7 @@ Function ButtonProc_SPECSSpinsum(ctrlName) : ButtonControl
 	spinsumpol=1/Sherman*(spinsumup-spinsumdown)/(spinsumup+spinsumdown)
 	
 	
-	logtext="Sum up "+num2str(loopnum)+" loops of Spin data in"+S_value+" folder as "+spingroupname+"Spin \r" 
+	logtext="Sum up "+num2str(loopnum)+" loops of Spin data in "+S_value+" folder as "+spingroupname+"Spin \r" 
 	Notebook exp_logbook selection={endoffile, endoffile},fsize=12, text=logtext
 	
 	killwaves temp, looptemp0, looptemp1, looptemp2, looptemp3, looptemp4, looptemp5, looptemp6, looptemp7
@@ -243,11 +244,13 @@ Function ButtonProc_SPECSSpinsum(ctrlName) : ButtonControl
 	Display/N=$S_value+"_Spinpolplot"
 	AppendtoGraph spinsumup, spinsumdown
 	AppendtoGraph/L=leftnew spinsumpol
+	
 	Spinplot()
 End
 
 static Function Spinplot()
 	
+	ModifyGraph width=340.157,height=255.118
 	ModifyGraph lsize=2
 	ModifyGraph/Z rgb[0]=(65535,0,0),rgb[1]=(0,0,65535),rgb[2]=(2,39321,1)
 	ModifyGraph/Z mode[2]=4,marker[2]=8,msize[2]=3,mrkThick[2]=1
@@ -257,8 +260,10 @@ static Function Spinplot()
 	SetAxis leftnew -0.5,0.5
 	ModifyGraph standoff(bottom)=0
 	ModifyGraph freePos(leftnew)={0,kwFraction}
+	ModifyGraph lblPos(left1)=55
 	ModifyGraph zero(leftnew)=4,zeroThick(leftnew)=2
 	ModifyGraph tick=2,mirror=1,fSize=14,axThick=2,font="Arial"
+	DelayUpdate;
 	ModifyGraph margin(left)=56,margin(bottom)=56,margin(right)=28,margin(top)=28
 	
 	Legend/C/N=text0/F=0/B=1/A=MC
@@ -307,7 +312,7 @@ Function ButtonProc_spinrawdata(ctrlName) : ButtonControl
 End
 
 static Function Spinrawplot()
-	
+	ModifyGraph width=340.157,height=255.118
 	ModifyGraph lsize=2
 	ModifyGraph/Z mode[2]=4,marker[2]=8,msize[2]=3,mrkThick[2]=1
 	Label left "\\F'Arial'\\Z20 Intensity";DelayUpdate
@@ -337,6 +342,7 @@ Function ButtonProc_Spinstatistics(ctrlName) : ButtonControl
 	String ctrlName
 	String spinpolwavelist, logtext
 	variable lnum, i, j, spinsize
+	string statmode
 	
 	controlinfo/W=AstraiosSpin popup0
 	
@@ -346,6 +352,13 @@ Function ButtonProc_Spinstatistics(ctrlName) : ButtonControl
 		Abort "Please set the current data folder to the choosen dataset !"
 	endif	
 	
+	prompt statmode "Please choose the statistics calculation mode for "+S_value+" dataset: " popup "Poission;loop statistics"
+	doprompt "", statmode
+	if(V_flag)
+		return -1 //user cancel
+	endif
+	
+	if(stringmatch(statmode,"loop statistics"))
 	spinpolwavelist=wavelist("*Spinpol",";", "")
 	lnum=itemsinlist(spinpolwavelist)-1
 	spinsize=dimsize($stringfromlist(0,spinpolwavelist),0)
@@ -369,6 +382,29 @@ Function ButtonProc_Spinstatistics(ctrlName) : ButtonControl
 	Notebook exp_logbook selection={endoffile, endoffile},fsize=12, text=logtext
 	
 	killwaves/Z stattemp, Spin_sdev, Spin_sem
+	
+	elseif(stringmatch(statmode,"Poission"))
+	
+	spinpolwavelist=wavelist("*Spinpol",";", "")
+	lnum=itemsinlist(spinpolwavelist)-1
+	
+	wave spinupwave=$stringfromlist(lnum,wavelist("*Spinup",";", ""))
+	//print stringfromlist(lnum,wavelist("*Spinpol",";", ""))
+	wave spindownwave=$stringfromlist(lnum,wavelist("*Spindown",";", ""))
+	wave spinpolwave=$stringfromlist(lnum,wavelist("*Spinpol",";", ""))
+	
+	duplicate/O spinpolwave, $S_value+"Spin_error"
+	wave spinerrorwave=$S_value+"Spin_error"
+	spinerrorwave=spinpolwave*sqrt((spinupwave+spindownwave)*(1/(spinupwave+spindownwave)^2+1/(spinupwave-spindownwave)^2))
+	//Assume possion statistics for spinup and spindown independently, and Sherman function as a constant. Using error propagation formula to calculated error bar. 
+	//Formula adapted from Yichen Zhang and et al. Observation of mirror-­ odd and mirror-­ even spin texture in ultrathin epitaxially strained RuO2 films. Sci. Adv. 12, eaec2917.
+	
+	Edit/K=0 $S_value+"Spin_error"
+	logtext="Calculate the Poission distribution error for "+num2str(lnum)+" loops of Spin data in "+S_value+" folder as Spin_error; \r" 
+	Notebook exp_logbook selection={endoffile, endoffile},fsize=12, text=logtext
+	
+	killwaves/Z spinupwave, spindownwave, spinpolwave
+	endif
 End
 
 
