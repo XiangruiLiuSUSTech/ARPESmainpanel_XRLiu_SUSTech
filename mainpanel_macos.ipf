@@ -1582,23 +1582,6 @@ Window NewImagePanel() : Graph
    Button button0 title="Load", pos={10,5},size={80,30},proc=ButtonProcPlotwave,font="Times New Roman",fSize=20
    Button button1 title="Scope", pos={400,10},size={80,30},proc=ButtonProcScope,font="Times New Roman",fSize=20
   	Button button2,title="AuEF",pos={532.00,45.00},size={50.00,20.00},proc=ButtonProcAuEffit,font="Times New Roman",fsize=14
-   ModifyGraph swapXY=1
-   AppendtoGraph/B=EDCaxisB/L=EDCaxisL EDCIntensity
-   AppendtoGraph/B=MDCaxisB/L=MDCaxisL/VERT MDCIntensity
-   ModifyGraph axisEnab(MDCaxisB)={0,0.7}
-	ModifyGraph axisEnab(MDCaxisL)={0.7,1}
-	ModifyGraph axisEnab(EDCaxisB)={0.70,1}
-   ModifyGraph axisEnab(EDCaxisL)={0,0.7}
-   ModifyGraph noLabel(MDCaxisB)=2,noLabel(EDCaxisL)=2
-   	ModifyGraph/Z axThick=2
-   ModifyGraph freePos(EDCaxisB)=0, freePos(EDCaxisL)={0,EDCaxisB}
-   ModifyGraph freePos(MDCaxisB)={0,MDCaxisL}, freePos(MDCaxisL)=0
-   ModifyGraph fStyle(MDCaxisL)=1,fSize(MDCaxisL)=16,font(MDCaxisL)="Arial"
-   ModifyGraph fStyle(EDCaxisB)=1,fSize(EDCaxisB)=16,font(EDCaxisB)="Arial"
-   Label EDCaxisB "\\F'Arial'\\Z24\f00 EDC Intensity"
-   Label MDCaxisL "\\F'Arial'\\Z24\f00 MDC Intensity"
-   ModifyGraph lblPosMode(MDCaxisL)=1, lblPosMode(EDCaxisB)=1
-   ModifyGraph margin(left)=70,margin(bottom)=70,margin(right)=42,margin(top)=28
   
    SetVariable setvar6 title="Num",limits={1,inf,1},font="Arial",fSize=14,fstyle=1
 	SetVariable setvar6 value= _NUM:1, pos={405,45}, size={70,20}, proc=ImagelistupdateProc
@@ -1618,7 +1601,26 @@ Window NewImagePanel() : Graph
    	setscale/P x energyoff, energydelta, EDCIntensity
    	redimension/N=(momentumdimension) MDCIntensity
    	setscale/P x momentumoff, momentumdelta, MDCIntensity
+ 
 	AppendImage curveplotwave
+	ModifyGraph swapXY=1
+	AppendtoGraph/B=EDCaxisB/L=EDCaxisL EDCIntensity
+   AppendtoGraph/B=MDCaxisB/L=MDCaxisL/VERT MDCIntensity
+   ModifyGraph axisEnab(MDCaxisB)={0,0.7}
+	ModifyGraph axisEnab(MDCaxisL)={0.7,1}
+	ModifyGraph axisEnab(EDCaxisB)={0.7,1}
+   ModifyGraph axisEnab(EDCaxisL)={0,0.7}
+   ModifyGraph noLabel(MDCaxisB)=2,noLabel(EDCaxisL)=2
+   	ModifyGraph/Z axThick=2
+   ModifyGraph freePos(EDCaxisB)=0, freePos(EDCaxisL)={0,EDCaxisB}
+   ModifyGraph freePos(MDCaxisB)={0,MDCaxisL}, freePos(MDCaxisL)=0
+   ModifyGraph fStyle(MDCaxisL)=1,fSize(MDCaxisL)=16,font(MDCaxisL)="Arial"
+   ModifyGraph fStyle(EDCaxisB)=1,fSize(EDCaxisB)=16,font(EDCaxisB)="Arial"
+   Label EDCaxisB "\\F'Arial'\\Z24\f00 EDC Intensity"
+   Label MDCaxisL "\\F'Arial'\\Z24\f00 MDC Intensity"
+   ModifyGraph lblPosMode(MDCaxisL)=1, lblPosMode(EDCaxisB)=1
+   ModifyGraph margin(left)=70,margin(bottom)=70,margin(right)=42,margin(top)=28
+	
 	ModifyGraph axisEnab(left)={0,0.7}
 	ModifyGraph axisEnab(bottom)={0,0.7}
 	SetAxis left energyoff, energy1
@@ -2115,7 +2117,7 @@ Function ButtonProcScope(ctrlName) : ButtonControl
 				currentscopewave/=scopeadd
 				if(wavemax(currentscopewave)!=0)
 					duplicate/O currentscopewave $"Scope"+num2str(i)
-					AppendtoGraph/w=NewScopewindow $"Scope"+num2str(i) vs ScopeEX
+					AppendtoGraph/w=NewScopewindow/B=bottom $"Scope"+num2str(i) vs ScopeEX
 				endif
 		endfor
 	endif
@@ -2141,7 +2143,7 @@ Function ButtonProcScope(ctrlName) : ButtonControl
 			currentscopewave/=scopeadd
 			if(wavemax(currentscopewave)!=0)
 				duplicate/O currentscopewave $"Scope"+num2str(i)
-				AppendtoGraph/w=NewScopewindow $"Scope"+num2str(i) vs ScopeMX
+				AppendtoGraph/w=NewScopewindow/B=bottom $"Scope"+num2str(i) vs ScopeMX
 			endif
 		endfor
 	endif
@@ -2322,7 +2324,7 @@ Function ButtonProc_NewScopeGraph(ctrlName) : ButtonControl
 		string newxwave=NewImagename+xwave
 		duplicate/O $ywave, $newscopewave
 		duplicate/O $xwave, $newxwave
-		AppendtoGraph $newscopewave vs $newxwave
+		AppendtoGraph/B=bottom $newscopewave vs $newxwave
 	endfor
 	ModifyGraph width=453.543,height=340.157
 	ModifyGraph margin(left)=70,margin(bottom)=70,margin(right)=28,margin(top)=28
@@ -2737,8 +2739,12 @@ Function NewMapHook(s)
 			hookresult=1
 		break
 	endswitch
+	if(hookresult==1)
 	twodimwaveliveupdate()
+	endif
 	return hookresult
+	
+
 End
 
 
@@ -3297,7 +3303,7 @@ Function ButtonProc3DMapexport()
 	String exportwavename
 	wave threeDmap
 	prompt exportwavename "Please enter the 3D export wave name:"
-	doprompt "", exportwavename
+	doprompt " ", exportwavename
 	if(V_flag)
 		return -1 //user cancel
 	endif
@@ -4317,7 +4323,7 @@ Function ButtonProc_FSrotat_lineprofile(ctrlName) : ButtonControl
 	endif
 	
 	for(i=0; i<knum; i+=1)
-		Appendtograph/W=FSlineprofile $"FSlp"+num2str(i+1)
+		Appendtograph/W=FSlineprofile/B=bottom $"FSlp"+num2str(i+1)
 	endfor
 	
 	FSlineprofileplot( )
@@ -6800,7 +6806,7 @@ Function analysiswaveplot()
 	for(i=0; i<numstack; i+=1)
 		wave xwave=$stringfromlist(i,analysisxwavelist)
 		wave ywave=$stringfromlist(i,analysisywavelist)
-		appendtograph/W=analysiswaveplotwin ywave vs xwave
+		appendtograph/W=analysiswaveplotwin/B=bottom ywave vs xwave
 	endfor
 		ModifyGraph/Z tick=2
 		ModifyGraph/Z mirror=1
@@ -8231,7 +8237,7 @@ Function selfenergyMDCplot()
 		else
 			offset+=wavemax(ywave)*0.5
 		endif
-		appendtograph/W=selfMDCplotwin ywave vs selfMDCX
+		appendtograph/W=selfMDCplotwin/B=bottom ywave vs selfMDCX
 		modifygraph offset($stringfromlist(i,selfMDCwavelist))={0,offset}
 	endfor
 		ModifyGraph/Z tick=2, mirror=1, lsize=2
