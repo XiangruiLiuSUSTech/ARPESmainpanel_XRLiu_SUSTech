@@ -1,11 +1,13 @@
 #pragma TextEncoding = "UTF-8"
 #pragma rtGlobals=3		// Use modern global access method and strict wave access.
 //This panel works for load and process the spin-resolved itx data exported from SPECS Prodigy v4.130.1, Astraios 190 analyzer and 3D VLEED detector.
-//Xiangrui Liu, 2026-06-11. xrliu1998@sjtu.edu.cn
+//Xiangrui Liu, 2026-08-20. xrliu1998@sjtu.edu.cn
 //For latest updates, related information and other related (maybe useful) procedures, please go to the Github link below.
 //https://github.com/XiangruiLiuSUSTech/ARPESmainpanel_XRLiu_SUSTech
 
 Window AstraiosSpin() : Panel
+	dowindow/f AstraiosSpin
+	if(V_flag==0)
 	PauseUpdate; Silent 1		// building window...
 	make/o/T/n=0 spindatalistwave
 	make/o/n=0 spindataselwave
@@ -32,7 +34,7 @@ Window AstraiosSpin() : Panel
 	PopupMenu popup0,pos={75.00,275.00},size={142.00,23.00},bodyWidth=100,title="dataset",proc=PopMenuProc_spindatasetchoose
 	PopupMenu popup0,font="Times New Roman",fSize=14
 	PopupMenu popup0,mode=1,popvalue="root",value= #"root:spindataset"
-
+	endif
 EndMacro
 
 
@@ -79,6 +81,9 @@ Function ButtonProc_Spinload(ctrlName) : ButtonControl
 	string datatype=".itx" 
 	string logtext
 	string spindatasetname
+ 	variable ref
+ 	string spinrotator, spincoil
+ 	string s1
 	string/g root:spindataset
 	wave/T spindatalistwave
 	wave spindataselwave
@@ -86,7 +91,9 @@ Function ButtonProc_Spinload(ctrlName) : ButtonControl
 	pathinfo spinfolderpath
 	
 	prompt spindatasetname "Please Enter the name for this spin dataset:"
-	doprompt "", spindatasetname
+	prompt spinrotator "Please Set the spin rotator:" popup "+1;-1"
+	prompt spincoil "Please Choose the spin coil:" popup "1;2"
+	doprompt "", spindatasetname, spinrotator, spincoil
 	if(V_flag)
 		return -1
 	endif
@@ -113,14 +120,40 @@ Function ButtonProc_Spinload(ctrlName) : ButtonControl
 				string itxloadstr="root:itxload"
 				killdatafolder/Z $itxloadstr	
 				
+				open/R/P=spinfolderpath ref as spindatalistwave[i]
+				string commentstr=""
+				for(j=0; j<100; j+=1)
+					FReadLine ref, s1
+					if(stringmatch(s1,"*User comment*")==1)
+						commentstr+=s1
+					endif
+				endfor
+				close/A
+				note root:$currentwavename, commentstr //copy the comments made in SPECS Prodigy
 				logtext="Load "+currentwavename+datatype+" from "+S_path+"to root:"+spindatasetname+"\r" 
 				Notebook exp_logbook selection={endoffile, endoffile},fsize=12, text=logtext
 		endif
 	endfor
+	
+	newdatafolder/O/S $spindatasetname
+	
+	variable/g $spindatasetname+"_spinrotator"=str2num(spinrotator)
+	variable/g $spindatasetname+"_spincoil"=str2num(spincoil)
+	if(str2num(spincoil)==1)
+		logtext="The measured spin polarization is Sz; positive is Sz, negative is -Sz;\r"
+	else
+		if(str2num(spinrotator)==1)
+			logtext="The measured spin polarization is Sx-Sy; positive is (-Sx+Sy)/sqrt(2), negative is (Sx-Sy)/sqrt(2);\r"
+		else
+			logtext="The measured spin polarization is Sx+Sy; positive is (Sx+Sy)/sqrt(2), negative is (-Sx-Sy)/sqrt(2);\r"
+		endif
+	endif
+	string/g $spindatasetname+"_spinvector"=logtext
+	Notebook exp_logbook selection={endoffile, endoffile},fsize=12, text=logtext
 	logtext="----------The data load process end--------------\r\r"
 	Notebook exp_logbook selection={endoffile, endoffile},fsize=12, text=logtext
 	
-	newdatafolder/O/S $spindatasetname
+	
 	string lp1=getdatafolder(1)
 	setdatafolder root:
 	for(i=0; i<index; i+=1)
@@ -191,6 +224,9 @@ Function ButtonProc_SPECSSpinsum(ctrlName) : ButtonControl
 	if(mod(spinwavenum,loopnum*profilenum) != 0)
 		Abort "Number of loops, profiles or waves is wrong ! Please retry."
 	endif
+	variable/g $S_value+"_Sherman"=Sherman
+	string/g $S_value+"_loopprofile"=profiletype
+	variable/g $S_value+"_loopnum"=loopnum
 	
 	spinwavesize=dimsize($stringfromlist(0,spinwavelist),0)
 	spinwaveoffset=dimoffset($stringfromlist(0,spinwavelist),0)
@@ -235,14 +271,27 @@ Function ButtonProc_SPECSSpinsum(ctrlName) : ButtonControl
 	endfor
 	spinsumpol=1/Sherman*(spinsumup-spinsumdown)/(spinsumup+spinsumdown)
 	
+	string spinvecstr=S_value+"_spinvector"
+	if(exists(spinvecstr))
+		svar newspinstr=$spinvecstr
+		string str1=newspinstr
+		if(stringmatch(newspinstr,"*Sz*"))
+			str1="Sz"
+		elseif(stringmatch(newspinstr,"*Polarization is Sx+Sy*"))
+			str1="Sx+Sy"
+		elseif(stringmatch(newspinstr,"*Polarization is Sx-Sy*"))
+			str1="Sx-Sy"
+		endif
+	endif
 	
 	logtext="Sum up "+num2str(loopnum)+" loops of Spin data in "+S_value+" folder as "+spingroupname+"Spin \r" 
+	logtext="Spin polarization vector is "+str1+";\r"
+	logtext+="The Sherman function is set as "+num2str(Sherman)+" \r"
 	Notebook exp_logbook selection={endoffile, endoffile},fsize=12, text=logtext
 	
 	killwaves temp, looptemp0, looptemp1, looptemp2, looptemp3, looptemp4, looptemp5, looptemp6, looptemp7
-	
-	Display/N=$S_value+"_Spinpolplot"
-	AppendtoGraph spinsumup, spinsumdown
+	Display/N=$S_value+"_loop"+num2str(loopnum)+"_plot"
+	AppendtoGraph/L=left spinsumup, spinsumdown
 	AppendtoGraph/L=leftnew spinsumpol
 	
 	Spinplot()
@@ -341,7 +390,7 @@ End
 Function ButtonProc_Spinstatistics(ctrlName) : ButtonControl
 	String ctrlName
 	String spinpolwavelist, logtext
-	variable lnum, i, j, spinsize
+	variable lnum, i, j, spinsize, Sherman
 	string statmode
 	
 	controlinfo/W=AstraiosSpin popup0
@@ -352,12 +401,12 @@ Function ButtonProc_Spinstatistics(ctrlName) : ButtonControl
 		Abort "Please set the current data folder to the choosen dataset !"
 	endif	
 	
-	prompt statmode "Please choose the statistics calculation mode for "+S_value+" dataset: " popup "Poission;loop statistics"
+	prompt statmode "Please choose the statistics calculation mode for "+S_value+" dataset: " popup "Poisson;loop statistics"
 	doprompt "", statmode
 	if(V_flag)
 		return -1 //user cancel
 	endif
-	
+
 	if(stringmatch(statmode,"loop statistics"))
 	spinpolwavelist=wavelist("*Spinpol",";", "")
 	lnum=itemsinlist(spinpolwavelist)-1
@@ -383,7 +432,17 @@ Function ButtonProc_Spinstatistics(ctrlName) : ButtonControl
 	
 	killwaves/Z stattemp, Spin_sdev, Spin_sem
 	
-	elseif(stringmatch(statmode,"Poission"))
+	elseif(stringmatch(statmode,"Poisson"))
+	
+	nvar Shermantemp=$S_value+"_Sherman"
+	if(nvar_exists(Shermantemp)!=1)
+		prompt Sherman "Previous value stored when sum up is missing, please enter the Sherman function to calculate error bar:"
+		doprompt "", Sherman
+		if(V_flag)
+			return -1 //user cancel
+		endif
+		Shermantemp=Sherman
+	endif
 	
 	spinpolwavelist=wavelist("*Spinpol",";", "")
 	lnum=itemsinlist(spinpolwavelist)-1
@@ -395,7 +454,7 @@ Function ButtonProc_Spinstatistics(ctrlName) : ButtonControl
 	
 	duplicate/O spinpolwave, $S_value+"Spin_error"
 	wave spinerrorwave=$S_value+"Spin_error"
-	spinerrorwave=spinpolwave*sqrt((spinupwave+spindownwave)*(1/(spinupwave+spindownwave)^2+1/(spinupwave-spindownwave)^2))
+	spinerrorwave=sqrt(2*(spinupwave^2+spindownwave^2))/(spinupwave+spindownwave)^(3/2)/shermantemp
 	//Assume possion statistics for spinup and spindown independently, and Sherman function as a constant. Using error propagation formula to calculated error bar. 
 	//Formula adapted from Yichen Zhang and et al. Observation of mirror-­ odd and mirror-­ even spin texture in ultrathin epitaxially strained RuO2 films. Sci. Adv. 12, eaec2917.
 	
